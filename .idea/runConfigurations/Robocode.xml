@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Robocode" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="robocode.Robocode" />
+    <module name="jarvis.main" />
+    <option name="VM_PARAMETERS" value="-Xmx512M -Dsun.io.useCanonCaches=false -Ddebug=true" />
+    <option name="WORKING_DIRECTORY" value="$USER_HOME$/robocode" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
