@@ -1,1 +1,1 @@
-# Jarvis: a Robocode robot by @bnorm
+# Jarvis: a Robocode robot

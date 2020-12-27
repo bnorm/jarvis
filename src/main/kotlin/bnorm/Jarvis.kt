@@ -1,56 +1,80 @@
 package bnorm
 
-import robocode.*
+import bnorm.parts.gun.Gun
+import bnorm.parts.gun.CircularTargetingStrategy
+import bnorm.parts.gun.DirectTargetingStrategy
+import bnorm.parts.gun.LinearTargetingStrategy
+import bnorm.parts.gun.VirtualGunService
+import bnorm.parts.radar.AdaptiveRadarStrategy
+import bnorm.parts.radar.Radar
+import bnorm.robot.RobotScan
+import bnorm.robot.RobotService
+import robocode.AdvancedRobot
+import robocode.RobotDeathEvent
+import robocode.RoundEndedEvent
+import robocode.Rules
+import robocode.ScannedRobotEvent
 import robocode.util.Utils
 import java.awt.Color
 import java.awt.Graphics2D
-import kotlin.math.*
-
-val RADAR_SCAN_EXCESS = Rules.RADAR_TURN_RATE_RADIANS * 2 / 5
-
-data class Enemy(
-    val location: Vector,
-    val velocity: Vector,
-    val time: Long,
-)
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class Jarvis : AdvancedRobot() {
-    private val enemyScans = mutableMapOf<String, ArrayDeque<Enemy>>()
-    private var destination: Vector.Cartesian? = null
+    private var destination: Vector? = null
+
+    private val robotService = RobotService()
+
+    private val gun = Gun(this)
+    private val virtualGunService = VirtualGunService(
+        gun, robotService, listOf(
+            DirectTargetingStrategy(gun),
+            LinearTargetingStrategy(gun),
+            CircularTargetingStrategy(gun),
+        )
+    )
+
+    private val radar = Radar(this)
+    private val radarStrategy = AdaptiveRadarStrategy(radar, robotService.alive) {
+        val robots = robotService.alive
+        when {
+            robots.size == 1 -> robots.first()
+            // Gun is within 4 ticks of firing, target closest robot
+            gunHeat - gunCoolingRate * 4 <= 0 -> robotService.closest(x, y)
+            else -> null
+        }
+    }
 
     override fun run() {
-        setBodyColor(Color(0, 0, 0))
-        setGunColor(Color(192, 0, 0))
-        setRadarColor(Color(64, 64, 64))
+        setBodyColor(Color(0x04, 0x04, 0x04))
+        setGunColor(Color(0xF1, 0xF1, 0xF1))
+        setRadarColor(Color(0x2D, 0x1E, 0x14))
 
         isAdjustRadarForGunTurn = true
         isAdjustGunForRobotTurn = true
 
         while (true) {
-            if (enemyScans.isEmpty()) {
-                setTurnRadarRightRadians(Double.MAX_VALUE)
-                execute()
-                continue
+            radarStrategy.setMove()
+
+            val target = robotService.closest(x, y)
+            if (target != null) {
+                val bulletPower = 2.0
+
+                val predicted = virtualGunService.predict(target, bulletPower)
+                setTurnGunRightRadians(Utils.normalRelativeAngle(predicted.theta - gunHeadingRadians))
+                if (gunTurnRemainingRadians < Rules.GUN_TURN_RATE_RADIANS) {
+                    setFire(bulletPower)
+                    if (gunHeat <= gunCoolingRate) {
+                        virtualGunService.fire(bulletPower)
+                    }
+                }
+
+                minRiskMovement(target.history.latest)
             }
 
-            val location = Cartesian(x, y)
-            val (name, enemy) = enemyScans.entries
-                .map { (k, v) -> k to v.last() }
-                .minByOrNull { (_, v) -> v.location.r2(x, y) }!!
-
-            if (enemyScans.size > 1 || enemy.time < time) {
-                setTurnRadarRightRadians(Double.MAX_VALUE)
-            } else {
-                val radarTurn = Utils.normalRelativeAngle(location.theta(enemy.location) - radarHeadingRadians)
-                setTurnRadarRightRadians(sign(radarTurn) * RADAR_SCAN_EXCESS + radarTurn)
-            }
-
-            val bulletPower = 2.0
-            val predicted = predictEnemyLocation(name, bulletPower)
-            setTurnGunRightRadians(Utils.normalRelativeAngle(location.theta(predicted.location) - gunHeadingRadians))
-            if (gunTurnRemainingRadians < Rules.GUN_TURN_RATE_RADIANS) setFire(bulletPower)
-
-            minRiskMovement(location, enemy)
             execute()
         }
     }
@@ -58,40 +82,45 @@ class Jarvis : AdvancedRobot() {
     override fun onPaint(g: Graphics2D) {
         destination?.let { g.fillCircle(it, 8) }
 
-        if (enemyScans.isEmpty()) return
-        val (name, _) = enemyScans.entries
-            .map { (k, v) -> k to v.last() }
-            .minByOrNull { (_, v) -> v.location.r2(x, y) }!!
+        val time = time
+        for ((name, holders) in virtualGunService.robots) {
+            for (holder in holders) {
+                when (holder.strategy) {
+                    is DirectTargetingStrategy -> g.color = Color.red
+                    is LinearTargetingStrategy -> g.color = Color.blue
+                    is CircularTargetingStrategy -> g.color = Color.green
+                    else -> g.color = Color.white
+                }
 
-        predictEnemyLocations(name)
-            .take(100)
-            .forEach {
-                g.fillCircle(it.location, 8)
+                for (bullet in holder.virtualGun.bullets) {
+                    g.drawLine(bullet.location(time - 1), bullet.location(time))
+                }
             }
+        }
     }
 
     override fun onScannedRobot(e: ScannedRobotEvent) {
-        val angle = headingRadians + e.bearingRadians
-        val enemy = enemyScans[e.name] ?: ArrayDeque<Enemy>().also { enemyScans[e.name] = it }
-        enemy += Enemy(
-            location = Cartesian(x + sin(angle) * e.distance, y + cos(angle) * e.distance),
-            velocity = Polar(e.headingRadians, e.velocity),
-            time = e.time
-        )
-        while (enemy.size > 2) enemy.removeFirst()
+        val scan = toRobotScan(e)
+        robotService.onScan(e.name, scan)
+        virtualGunService.scan(e.name, scan)
     }
 
     override fun onRobotDeath(e: RobotDeathEvent) {
-        enemyScans.remove(e.name)
+        robotService.onDeath(e.name)
+        virtualGunService.death(e.name)
     }
 
-    private fun minRiskMovement(location: Vector, closest: Enemy) {
+    override fun onRoundEnded(event: RoundEndedEvent) {
+        robotService.onRoundEnd()
+    }
+
+    private fun minRiskMovement(closest: RobotScan) {
         var destination = this.destination
 
-        val dangerous = enemyScans.values.map { it.last().location }
+        val dangerous = robotService.alive.map { it.history.latest.location }
         val possible = possibleDestinations(closest).minByOrNull { risk(it, dangerous) }!!
         if (destination == null
-            || location.r2(destination) < sqr(16.0)
+            || r2(x, y, destination) < sqr(16.0)
             || risk(destination, dangerous) * .9 > risk(possible, dangerous)
         ) {
             destination = possible
@@ -108,7 +137,7 @@ class Jarvis : AdvancedRobot() {
                 y in heightPadding..battleFieldHeight - heightPadding
     }
 
-    private fun possibleDestinations(closest: Enemy) = sequence {
+    private fun possibleDestinations(closest: RobotScan) = sequence {
         val location = Cartesian(x, y)
 
         val dist = sqrt(location.r2(closest.location))
@@ -128,57 +157,6 @@ class Jarvis : AdvancedRobot() {
         }
     }
         .filter { it.inBattleField(32) }
-
-    private fun predictEnemyLocation(name: String, bulletPower: Double): Enemy {
-        val enemyLocations = predictEnemyLocations(name)
-
-        val x = x
-        val y = y
-        val bulletVelocity = Rules.getBulletSpeed(bulletPower)
-
-        return enemyLocations.filterIndexed { index, predicted ->
-            val bulletDistance = sqr(index * bulletVelocity)
-            val enemyDistance = r2(x, y, predicted.location.x, predicted.location.y)
-            bulletDistance > enemyDistance
-        }.first()
-    }
-
-    private fun predictEnemyLocations(name: String): Sequence<Enemy> {
-        val enemyScans = enemyScans[name]!!
-        return sequence {
-            var curr = enemyScans[enemyScans.size - 1]
-            yield(curr)
-
-            var prev = if (enemyScans.size < 2) curr
-            else {
-                val prev = enemyScans[enemyScans.size - 2]
-                if (curr.time - prev.time > 1) curr
-                else prev
-            }
-
-            while (true) {
-                val acceleration = curr.velocity.r - prev.velocity.r
-                val turn = curr.velocity.theta - prev.velocity.theta
-
-                val r = truncate(-Rules.MAX_VELOCITY, curr.velocity.r + acceleration, Rules.MAX_VELOCITY)
-                val velocity = Polar(curr.velocity.theta + turn, r)
-
-                val next = curr.copy(
-                    location = curr.location + curr.velocity,
-                    velocity = velocity,
-                )
-                if (next.location.inBattleField()) {
-                    yield(next)
-                    prev = curr
-                    curr = next
-                } else {
-                    break
-                }
-            }
-
-            while (true) yield(curr)
-        }
-    }
 }
 
 private fun AdvancedRobot.risk(destination: Vector, enemies: List<Vector>): Double {
@@ -206,7 +184,18 @@ private fun AdvancedRobot.risk(destination: Vector, enemies: List<Vector>): Doub
     return risk
 }
 
-fun AdvancedRobot.moveTo(destination: Vector.Cartesian) {
+fun AdvancedRobot.toRobotScan(e: ScannedRobotEvent): RobotScan {
+    val angle = headingRadians + e.bearingRadians
+    return RobotScan(
+        location = Cartesian(x + sin(angle) * e.distance, y + cos(angle) * e.distance),
+        velocity = Polar(e.headingRadians, e.velocity),
+        energy = e.energy,
+        time = e.time,
+        interpolated = false,
+    )
+}
+
+fun AdvancedRobot.moveTo(destination: Vector) {
     var theta = Utils.normalRelativeAngle(theta(x, y, destination.x, destination.y) - headingRadians)
     var r = r(x, y, destination.x, destination.y)
 
@@ -221,6 +210,10 @@ fun AdvancedRobot.moveTo(destination: Vector.Cartesian) {
 
     setTurnRightRadians(theta)
     setAhead(r)
+}
+
+fun Graphics2D.drawLine(start: Vector, end: Vector) {
+    drawLine(start.x.toInt(), start.y.toInt(), end.x.toInt(), end.y.toInt())
 }
 
 fun Graphics2D.fillCircle(it: Vector, diameter: Int) {

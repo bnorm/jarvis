@@ -13,8 +13,13 @@ sealed class Vector {
     abstract val r: Double
     abstract val r2: Double
 
-    operator fun plus(other: Vector) = Cartesian(x + other.x, y + other.y)
-    operator fun minus(other: Vector) = Cartesian(x - other.x, y - other.y)
+    operator fun plus(other: Vector) = Cartesian(this.x + other.x, this.y + other.y)
+    fun plus(x: Double, y: Double) = Cartesian(this.x + x, this.y + y)
+
+    operator fun minus(other: Vector) = Cartesian(this.x - other.x, this.y - other.y)
+    fun minus(x: Double, y: Double) = Cartesian(this.x - x, this.y - y)
+
+    operator fun times(scalar: Double) = Polar(theta, scalar * r)
 
     data class Cartesian(override val x: Double, override val y: Double) : Vector() {
         override val theta: Double get() = atan2(x, y)
@@ -32,8 +37,8 @@ sealed class Vector {
 fun Cartesian(x: Double, y: Double) = Vector.Cartesian(x, y)
 fun Polar(theta: Double, r: Double) = Vector.Polar(theta, r)
 
-fun Vector.toCartesian() = this as? Vector.Polar ?: Vector.Polar(x, y)
-fun Vector.toPolar() = this as? Vector.Cartesian ?: Vector.Cartesian(theta, r)
+fun Vector.toPolar() = this as? Vector.Polar ?: Vector.Polar(x, y)
+fun Vector.toCartesian() = this as? Vector.Cartesian ?: Vector.Cartesian(theta, r)
 
 fun Vector.theta(x: Double, y: Double): Double {
     return atan2(x - this.x, y - this.y)
@@ -50,7 +55,6 @@ fun Vector.r2(x: Double, y: Double): Double {
 fun Vector.r2(destination: Vector): Double {
     return sqr(destination.x - x) + sqr(destination.y - y)
 }
-
 
 fun Vector.r(x: Double, y: Double): Double {
     return sqrt(sqr(x - this.x) + sqr(y - this.y))

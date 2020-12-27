@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm")
-    id("robocode")
+    kotlin("jvm") version "1.4.21"
+    id("com.bnorm.robocode")
 }
 
 repositories {
@@ -23,4 +23,11 @@ tasks.withType<KotlinCompile> {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+robocode {
+    robots.register("Jarvis") {
+        classPath = "bnorm.Jarvis"
+        version = project.version.toString()
+    }
 }

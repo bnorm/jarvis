@@ -1,6 +1,6 @@
 plugins {
+    `java-gradle-plugin`
     `kotlin-dsl`
-    `kotlin-dsl-precompiled-script-plugins`
 }
 
 repositories {
@@ -9,6 +9,14 @@ repositories {
 }
 
 dependencies {
-    api("org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.21")
     api("com.github.jengelman.gradle.plugins:shadow:6.1.0")
+}
+
+gradlePlugin {
+    plugins {
+        create("robocodePlugin") {
+            id = "com.bnorm.robocode"
+            implementationClass = "com.bnorm.robocode.RobocodePlugin"
+        }
+    }
 }
