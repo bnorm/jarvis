@@ -2,14 +2,14 @@ package bnorm.parts.radar
 
 import bnorm.robot.Robot
 
-class AdaptiveRadarStrategy(
+class AdaptiveScan(
     private val radar: Radar,
     private val robots: Collection<Robot>,
     private val target: () -> Robot?,
-) : RadarStrategy {
-    private val targetCache = mutableMapOf<String, TargetRadarStrategy>()
-    private val melee = MeleeRadarStrategy(radar, robots)
-    private val default = InfiniteRadarStrategy(radar)
+) : Scan {
+    private val targetCache = mutableMapOf<String, TargetScan>()
+    private val melee = MeleeScan(radar, robots)
+    private val default = InfiniteScan(radar)
 
     override fun setMove() {
         val selected = when {
@@ -18,7 +18,7 @@ class AdaptiveRadarStrategy(
             else -> {
                 val target = target()
                 when {
-                    target != null -> targetCache.getOrPut(target.name) { TargetRadarStrategy(radar, target) }
+                    target != null -> targetCache.getOrPut(target.name) { TargetScan(radar, target) }
                     robots.size > 1 -> melee
                     else -> default
                 }

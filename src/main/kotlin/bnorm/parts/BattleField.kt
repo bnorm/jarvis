@@ -1,11 +1,14 @@
 package bnorm.parts
 
 import bnorm.Vector
+import bnorm.r
 
 data class BattleField(
     val width: Double,
     val height: Double,
-)
+) {
+    val diagonal = r(0.0, 0.0, width, height)
+}
 
 fun BattleField.contains(x: Double, y: Double): Boolean =
     x in 0.0..width && y in 0.0..height

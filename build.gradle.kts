@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+    implementation("com.jakewharton.picnic:picnic:0.5.0")
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
@@ -18,7 +18,7 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.jvmTarget = "1.8"
 }
 
 tasks.test {
@@ -26,8 +26,18 @@ tasks.test {
 }
 
 robocode {
-    robots.register("Jarvis") {
-        classPath = "bnorm.Jarvis"
-        version = project.version.toString()
+    robots {
+        register("Jarvis") {
+            classPath = "bnorm.Jarvis"
+            version = project.version.toString()
+        }
+        register("Jarvis TC") {
+            classPath = "bnorm.Jarvis"
+            version = project.version.toString()
+        }
+        register("Jarvis MC") {
+            classPath = "bnorm.Jarvis"
+            version = project.version.toString()
+        }
     }
 }

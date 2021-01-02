@@ -7,10 +7,10 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sign
 
-class MeleeRadarStrategy(
+class MeleeScan(
     private val radar: Radar,
     private val aliveRobots: Collection<Robot>,
-) : RadarStrategy {
+) : Scan {
     private var turningRight = true
 
     override fun setMove() {
@@ -23,9 +23,9 @@ class MeleeRadarStrategy(
         val currTime = radar.time
         val robotAngles = sortedSetOf<Double>()
         for (robot in aliveRobots) {
-            val scan = robot.history.latest
+            val scan = robot.latest
             val angle = theta(radar.x, radar.y, scan.location)
-            val escapeAngle = radar.escapeAngle(currTime - scan.time + 2, scan)
+            val escapeAngle = radar.escapeAngle(currTime + 2, scan)
 
             robotAngles.add(Utils.normalAbsoluteAngle(angle - escapeAngle))
             robotAngles.add(Utils.normalAbsoluteAngle(angle + escapeAngle))
@@ -63,6 +63,8 @@ class MeleeRadarStrategy(
             val leftBearing = Utils.normalRelativeAngle(leftRobotAngle - radar.heading)
 
             val turnAngle = when {
+                rightBearing == 0.0 -> leftBearing
+                leftBearing == 0.0 -> rightBearing
                 sign(rightBearing) == sign(leftBearing) -> {
                     // Both bearings are in the same direction, turn towards the farthest
                     turningRight = rightBearing > 0

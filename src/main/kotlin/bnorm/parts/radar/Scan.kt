@@ -1,5 +1,5 @@
 package bnorm.parts.radar
 
-interface RadarStrategy {
+interface Scan {
     fun setMove()
 }

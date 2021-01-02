@@ -4,7 +4,16 @@ package bnorm
 
 import kotlin.math.*
 
-fun truncate(min: Double, value: Double, max: Double) = maxOf(minOf(value, max), min)
+fun normalize(min: Double, value: Double, max: Double): Double {
+    return 2.0 * (value - min) / (max - min) - 1.0
+}
+fun Double.project(min: Double, max: Double): Double {
+    return 2.0 * (this - min) / (max - min) - 1.0
+}
+
+fun signMul(n: Double): Double {
+    return if (n < 0.0) -1.0 else 1.0
+}
 
 inline fun sqr(d: Double): Double {
     return d * d

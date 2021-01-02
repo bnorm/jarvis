@@ -1,8 +1,8 @@
 package bnorm.parts.radar
 
-class InfiniteRadarStrategy(
+class InfiniteScan(
     private val radar: Radar
-) : RadarStrategy {
+) : Scan {
     override fun setMove() {
         radar.setTurn(Double.POSITIVE_INFINITY)
     }
