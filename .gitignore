@@ -4,7 +4,5 @@ build/
 
 # IntelliJ
 *.iml
-.idea/*
-!.idea/runConfigurations/
-!.idea/runConfigurations/*
+.idea/
 

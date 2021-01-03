@@ -9,10 +9,10 @@ import bnorm.sqr
 import robocode.Rules
 
 class CircularPrediction(
-    private val gun: Gun
+    private val self: Robot
 ) : Prediction {
     override fun predict(robot: Robot, bulletPower: Double): Vector {
-        val enemyLocations = gun.generateSequence(robot) { prev, curr ->
+        val enemyLocations = self.generateSequence(robot) { prev, curr ->
             curr.copy(
                 location = curr.location + curr.velocity,
                 velocity = Polar(
@@ -23,18 +23,16 @@ class CircularPrediction(
             )
         }
 
-        val currTime = gun.time
-        val x = gun.x
-        val y = gun.y
+        val source = self.latest.location
         val bulletVelocity = Rules.getBulletSpeed(bulletPower)
 
-        val timeOffset = robot.latest.time - currTime
+        val timeOffset = robot.latest.time - self.latest.time
         val predictedScan = enemyLocations.filterIndexed { index, predicted ->
             val bulletDistance = sqr((index + timeOffset) * bulletVelocity)
-            val enemyDistance = r2(x, y, predicted.location.x, predicted.location.y)
+            val enemyDistance = source.r2(predicted.location)
             bulletDistance > enemyDistance
         }.first()
 
-        return predictedScan.location.minus(x, y)
+        return predictedScan.location - source
     }
 }

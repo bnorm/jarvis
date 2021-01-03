@@ -1,128 +1,109 @@
 package bnorm.kdtree
 
 import bnorm.sqr
+import bnorm.rollingVariance
 import java.util.*
+import kotlin.collections.ArrayDeque
 import kotlin.collections.ArrayList
 
 class KdTree<T>(
-    // TODO faster way than storing dimension functions
-    dimensionsCount: Int,
-    private val dimensions: (T) -> DoubleArray,
-    private val dist: (DoubleArray, DoubleArray) -> Double
+    private val dimensionScales: DoubleArray,
+    private val dimensionsFunction: (T) -> DoubleArray,
 ) {
-    constructor(vararg dimensions: (T) -> Double, dist: (DoubleArray, DoubleArray) -> Double) : this(
-        dimensionsCount = dimensions.size,
-        dimensions = { point ->
-            DoubleArray(dimensions.size) { index ->
-                dimensions[index](point)
-            }
-        },
-        dist = dist
-    )
-
     init {
-        require(dimensionsCount > 0)
+        require(dimensionScales.isNotEmpty())
     }
 
     companion object {
+        // TODO adjust bucket size
         private const val BUCKET_SIZE = 100
     }
 
-    private class Dimensional<out T>(
-        val point: T,
+    private class TreePoint<out T>(
+        override val value: T,
         val dimensions: DoubleArray,
-    )
+        override var dist: Double = 0.0,
+        private var leaf: Node.Leaf<T>? = null
+    ) : Neighbor<T> {
+        override fun compareTo(other: Neighbor<*>): Int = compareValues(dist, other.dist)
+        override fun remove() {
+            leaf?.remove(this)
+        }
+    }
 
-    private sealed class Node<D : Dimensional<*>> {
-        abstract fun add(value: D): Node<D>
+    private sealed class Node<T> {
+        abstract fun add(value: TreePoint<T>): Node<T>
 
-        class Leaf<D : Dimensional<*>>(
-            dimensionsCount: Int
-        ) : Node<D>() {
-            private val _bucket = ArrayList<D>(BUCKET_SIZE + 10) // TODO actual array to avoid copy?
-            val bucket: List<D> get() = _bucket
+        class Leaf<T>(
+            dimensionsCount: Int,
+            private val parentDimension: Int,
+        ) : Node<T>() {
+            val bucket = ArrayList<TreePoint<T>>(BUCKET_SIZE + 10) // TODO actual array to avoid copy?
 
-            private val means = MutableList(dimensionsCount) { 0.0 }
-            private val variances = MutableList(dimensionsCount) { 0.0 }
+            private val means = DoubleArray(dimensionsCount) { 0.0 }
+            private val variances = DoubleArray(dimensionsCount) { 0.0 }
 
-            override fun add(value: D): Node<D> {
-                _bucket.add(value)
-                updateVariance(value)
-
-                // TODO adjust bucket size
-                return if (_bucket.size > BUCKET_SIZE) split() else this
+            override fun add(value: TreePoint<T>): Node<T> {
+                bucket.add(value)
+                rollingVariance(bucket.size, means, variances, value.dimensions)
+                return if (bucket.size > BUCKET_SIZE) split() else this
             }
 
-            private fun updateVariance(value: D): Int {
-                val n = _bucket.size
-                val dimensions = value.dimensions
-
-                if (n == 1) {
-                    for (i in variances.indices) {
-                        val d = dimensions[i]
-                        val oldMean = means[i]
-                        means[i] = (d + (n - 1) * oldMean) / n
-                    }
-                } else {
-                    for (i in variances.indices) {
-                        val d = dimensions[i]
-                        val oldMean = means[i]
-                        means[i] = (d + (n - 1) * oldMean) / n
-                        variances[i] = (n - 2) * variances[i] / (n - 1) + sqr(d - oldMean) / n
-                    }
-                }
-
-                return n
+            fun remove(point: TreePoint<T>) {
+                bucket.remove(point)
             }
 
-            private fun split(): Branch<D> {
-                println("SPLIT! $variances")
+            private fun split(): Branch<T> {
+                val dimension = bestSplitDimension()
+                bucket.sortBy { it.dimensions[dimension] }
 
-                var dimension = -1
-                var max = Double.MIN_VALUE
-
-                for (i in 0 until variances.size) {
-                    val s = variances[i]
-                    if (s > max) {
-                        max = s
-                        dimension = i
-                    }
-                }
-
-                _bucket.sortBy { it.dimensions[dimension] }
-
-                val middle = _bucket.size / 2
-                val pivot = _bucket[middle].dimensions[dimension]
+                val middle = bucket.size / 2
+                val pivot = bucket[middle].dimensions[dimension]
 
                 var up = middle
                 var down = middle
                 // TODO walk together to avoid excessively long walks in a single direction
-                while (up + 1 < _bucket.size && _bucket[up + 1].dimensions[dimension] == pivot) up++
-                while (down - 1 > 0 && _bucket[down - 1].dimensions[dimension] == pivot) down--
+                while (up + 1 < bucket.size && bucket[up + 1].dimensions[dimension] == pivot) up++
+                while (down - 1 > 0 && bucket[down - 1].dimensions[dimension] == pivot) down--
                 val listSplit = if (up - middle > middle - down) down else up
 
-                val left = _bucket.subList(0, listSplit)
-                val right = _bucket.subList(listSplit, _bucket.size)
+                val left = bucket.subList(0, listSplit)
+                val right = bucket.subList(listSplit, bucket.size)
                 return Branch(
                     pivot,
                     dimension,
-                    Leaf<D>(variances.size).also { left.forEach(it::add) },
-                    Leaf<D>(variances.size).also { right.forEach(it::add) },
+                    Leaf<T>(variances.size, dimension).also { left.forEach(it::add) },
+                    Leaf<T>(variances.size, dimension).also { right.forEach(it::add) },
                 )
+            }
+
+            fun bestSplitDimension(): Int {
+                var index = (parentDimension + 1) % variances.size
+                var best = variances[index]
+
+                for (i in variances.indices) {
+                    if (i == index || i == parentDimension) continue
+
+                    val s = variances[i]
+                    if (s > best) {
+                        best = s
+                        index = i
+                    }
+                }
+
+                return index
             }
 
             override fun toString(): String = "Leaf(bucket=$bucket)"
         }
 
-        class Branch<D : Dimensional<*>>(
+        class Branch<T>(
             val pivot: Double,
             val dimension: Int,
-            var left: Node<D>,
-            var right: Node<D>,
-        ) : Node<D>() {
-            fun dimensions(base: DoubleArray) = DoubleArray(base.size) { if (it == dimension) pivot else base[it] }
-
-            override fun add(value: D): Node<D> {
+            var left: Node<T>,
+            var right: Node<T>,
+        ) : Node<T>() {
+            override fun add(value: TreePoint<T>): Node<T> {
                 if (value.dimensions[dimension] <= pivot) {
                     left = left.add(value)
                 } else {
@@ -135,52 +116,85 @@ class KdTree<T>(
         }
     }
 
-    private var root: Node<Dimensional<T>> = Node.Leaf(dimensionsCount)
+    private var root: Node<T> = Node.Leaf(dimensionScales.size, -1)
 
     fun add(value: T) {
-        root = root.add(value.toDimensional())
+        val neighbor = TreePoint(value, dimensionsFunction(value))
+        root = root.add(neighbor)
     }
 
-    data class Neighbor<out T>(
-        val value: T,
-        val dist: Double,
-    )
+    interface Neighbor<out T> : Comparable<Neighbor<*>> {
+        val value: T
+        val dist: Double
+
+        fun remove()
+    }
+
+    fun neighbors(point: T, size: Int): List<Neighbor<T>> {
+        val pointDimensions = dimensionsFunction(point)
+        val pointDimensionsCopy = pointDimensions.copyOf()
+
+        val stack = ArrayDeque<Node<T>>()
+        val heap = SmallSizedHeap<TreePoint<T>>(size)
+
+        stack.addLast(root)
+        while (stack.isNotEmpty()) {
+            when (val node = stack.removeLast()) {
+                is Node.Leaf -> {
+                    for (value in node.bucket) {
+                        value.dist = dist(pointDimensions, value.dimensions)
+                        heap.add(value)
+                    }
+                }
+                is Node.Branch -> {
+                    if (heap.size < size || dist(pointDimensions, pointDimensionsCopy, node) < heap.last.dist) {
+                        if (pointDimensions[node.dimension] <= node.pivot) {
+                            stack.addLast(node.right)
+                            stack.addLast(node.left)
+                        } else {
+                            stack.addLast(node.left)
+                            stack.addLast(node.right)
+                        }
+                    }
+                }
+            }
+        }
+
+        return heap.toList()
+    }
 
     fun neighbors(point: T): Sequence<Neighbor<T>> = sequence {
-        val dimensional = point.toDimensional()
-//        println("POINT: ${ dimensional.dimensions.joinToString() }")
+        val pointDimensions = dimensionsFunction(point)
+        val pointDimensionsCopy = pointDimensions.copyOf()
 
-        class Other<D : Dimensional<*>>(
+        class Other<T>(
+            val node: Node<T>,
             val dist: Double,
-            val node: Node<D>
-        )
+        ) : Comparable<Other<T>> {
+            override fun compareTo(other: Other<T>): Int = compareValues(dist, other.dist)
+        }
 
-        val others = PriorityQueue<Other<Dimensional<T>>>(compareBy { it.dist })
-        val queue = PriorityQueue<Neighbor<T>>(3 * BUCKET_SIZE, compareBy { it.dist })
+        val others = PriorityQueue<Other<T>>()
+        val queue = PriorityQueue<TreePoint<T>>()
 
-        fun traverse(start: Node<Dimensional<T>>) {
+        fun traverse(start: Node<T>) {
             var node = start
             while (true) {
                 node = when (node) {
                     is Node.Leaf -> {
                         for (value in node.bucket) {
-                            val dist = dist(dimensional.dimensions, value.dimensions)
-                            queue.add(Neighbor(value.point, dist))
+                            value.dist = dist(pointDimensions, value.dimensions)
                         }
-//                        println("LEAF: first=${queue.firstOrNull()?.dist} last=${queue.lastOrNull()?.dist}")
+                        queue.addAll(node.bucket)
                         return
                     }
                     is Node.Branch -> {
-                        val value = dimensional.dimensions[node.dimension]
-                        val pivot = node.pivot
-                        val dist = dist(dimensional.dimensions, node.dimensions(dimensional.dimensions))
-                        if (value <= pivot) {
-//                            println("LEFT: -> pivot=$dist")
-                            others.add(Other(dist, node.right))
+                        val dist = dist(pointDimensions, pointDimensionsCopy, node)
+                        if (pointDimensions[node.dimension] <= node.pivot) {
+                            others.add(Other(node.right, dist))
                             node.left
                         } else {
-//                            println("RIGHT: -> pivot=$dist")
-                            others.add(Other(dist, node.left))
+                            others.add(Other(node.left, dist))
                             node.right
                         }
                     }
@@ -190,10 +204,9 @@ class KdTree<T>(
 
         traverse(root)
         while (others.isNotEmpty()) {
-            val other: Other<Dimensional<T>> = others.poll()
-//            println("OTHER: dist=${other.dist}")
+            val other = others.poll()
 
-            var best: Neighbor<T>? = queue.peek()
+            var best: TreePoint<T>? = queue.peek()
             while (best != null && other.dist > best.dist) {
                 yield(queue.remove())
                 best = queue.peek()
@@ -202,29 +215,38 @@ class KdTree<T>(
             traverse(other.node)
         }
 
-        var best: Neighbor<T>? = queue.poll()
-        while (best != null) {
-            yield(best)
-            best = queue.poll()
-        }
+        yieldAll(queue)
     }
 
-    private fun T.toDimensional() = Dimensional(this, dimensions(this))
+    private fun dist(p1: DoubleArray, p2: DoubleArray): Double {
+        var sum = 0.0
+        for (i in dimensionScales.indices) {
+            sum += dimensionScales[i] * sqr(p1[i] - p2[i])
+        }
+        return sum
+    }
+
+    private fun dist(p: DoubleArray, copy: DoubleArray, node: Node.Branch<T>): Double {
+        copy[node.dimension] = node.pivot
+        val result = dist(p, copy)
+        copy[node.dimension] = p[node.dimension]
+        return result
+    }
 
     fun print() {
-//        fun recurse(node: Node.Branch<*>, indent: String) {
-//            println("${indent}BRANCH: ${node.dimension}=${node.pivot}")
-//            (node.left as? Node.Branch)?.let { left ->
-//                println("${indent}LEFT")
-//                recurse(left, "$indent  ")
-//            }
-//            (node.right as? Node.Branch)?.let { right ->
-//                println("${indent}RIGHT")
-//                recurse(right, "$indent  ")
-//            }
-//        }
-//        println("ROOT")
-//        (root as? Node.Branch)?.let { recurse(it, "  ") }
-//        println()
+        fun recurse(node: Node.Branch<*>, indent: String) {
+            println("${indent}${indent.length / 2}:BRANCH: ${node.dimension}=${node.pivot}")
+            (node.left as? Node.Branch)?.let { left ->
+                println("${indent}${indent.length / 2}:LEFT")
+                recurse(left, "$indent  ")
+            }
+            (node.right as? Node.Branch)?.let { right ->
+                println("${indent}${indent.length / 2}:RIGHT")
+                recurse(right, "$indent  ")
+            }
+        }
+        println("ROOT")
+        (root as? Node.Branch)?.let { recurse(it, "  ") }
+        println()
     }
 }

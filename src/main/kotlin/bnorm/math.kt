@@ -4,13 +4,6 @@ package bnorm
 
 import kotlin.math.*
 
-fun normalize(min: Double, value: Double, max: Double): Double {
-    return 2.0 * (value - min) / (max - min) - 1.0
-}
-fun Double.project(min: Double, max: Double): Double {
-    return 2.0 * (this - min) / (max - min) - 1.0
-}
-
 fun signMul(n: Double): Double {
     return if (n < 0.0) -1.0 else 1.0
 }
@@ -48,3 +41,25 @@ inline fun r(source: Vector, destination: Vector): Double =
 
 inline fun r(x: Double, y: Double, destination: Vector): Double =
     r(x, y, destination.x, destination.y)
+
+fun rollingVariance(
+    n: Int,
+    means: DoubleArray,
+    variances: DoubleArray,
+    values: DoubleArray
+) {
+    if (n == 1) {
+        for (i in variances.indices) {
+            val v = values[i]
+            val oldMean = means[i]
+            means[i] = (v + (n - 1) * oldMean) / n
+        }
+    } else {
+        for (i in variances.indices) {
+            val v = values[i]
+            val oldMean = means[i]
+            means[i] = (v + (n - 1) * oldMean) / n
+            variances[i] = (n - 2) * variances[i] / (n - 1) + sqr(v - oldMean) / n
+        }
+    }
+}

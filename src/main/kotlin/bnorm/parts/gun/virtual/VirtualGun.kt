@@ -1,15 +1,21 @@
-package bnorm.parts.gun
+package bnorm.parts.gun.virtual
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.parts.gun.Prediction
 import bnorm.parts.tank.TANK_SIZE
 import bnorm.r
+import bnorm.robot.Robot
 import bnorm.robot.RobotScan
 import robocode.Rules
 import java.util.*
 import kotlin.math.sqrt
 
-class VirtualGun {
+class VirtualGun(
+    private val source: Robot,
+    private val target: Robot,
+    val prediction: Prediction,
+) {
     companion object {
         private val TANK_HIT_RADIUS = sqrt(2.0) * TANK_SIZE / 2
     }
@@ -32,6 +38,9 @@ class VirtualGun {
     private val _bullets = LinkedList<VirtualBullet>()
     val bullets: List<VirtualBullet> get() = _bullets
 
+    private var _latest: Vector? = null
+    val latest: Vector get() = _latest!!
+
     var fired: Long = 0
         private set
     var hit: Long = 0
@@ -45,14 +54,11 @@ class VirtualGun {
         success = this.hit.toDouble() / fired
     }
 
-    fun fire(
-        time: Long,
-        location: Vector.Cartesian,
-        velocity: Vector,
-        power: Double,
-    ) {
+    fun fire(power: Double): Vector {
         val speed = Rules.getBulletSpeed(power)
-        _bullets.addLast(VirtualBullet(time + 1, location, Polar(velocity.theta, speed), speed))
+        val velocity = Polar(prediction.predict(target, power).theta, speed)
+        _bullets.addLast(VirtualBullet(source.latest.time + 1, source.latest.location, velocity, speed))
+        return velocity
     }
 
     fun scan(scan: RobotScan) {

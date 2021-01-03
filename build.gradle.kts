@@ -18,7 +18,13 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions {
+        jvmTarget = "1.8"
+        freeCompilerArgs += listOf(
+            "-Xopt-in=kotlin.time.ExperimentalTime",
+            "-Xopt-in=kotlin.ExperimentalStdlibApi"
+        )
+    }
 }
 
 tasks.test {
@@ -31,13 +37,15 @@ robocode {
             classPath = "bnorm.Jarvis"
             version = project.version.toString()
         }
-        register("Jarvis TC") {
-            classPath = "bnorm.Jarvis"
+        register("JarvisT") {
+            classPath = "bnorm.JarvisT"
             version = project.version.toString()
+            description = "Jarvis - Targeting Only"
         }
-        register("Jarvis MC") {
-            classPath = "bnorm.Jarvis"
+        register("JarvisM") {
+            classPath = "bnorm.JarvisM"
             version = project.version.toString()
+            description = "Jarvis - Movement Only"
         }
     }
 }

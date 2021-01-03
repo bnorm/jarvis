@@ -17,7 +17,7 @@ data class Challenge(
     }
 
     data class Group(
-        val name: String? = null,
+        val name: String,
         val results: List<Result>
     ) {
         init {
@@ -92,13 +92,13 @@ fun Challenge.toTable() = table {
                 }
                 sum / n
             }
-            botRow("All Total", scores)
+            botRow("Average", scores)
         }
     }
 }
 
 private fun TableDsl.category(
-    title: String?,
+    title: String,
     results: List<Challenge.Result>
 ) {
     for ((index, result) in results.withIndex()) {
@@ -110,6 +110,7 @@ private fun TableDsl.category(
                 }
                 cell(title) {
                     rowSpan = results.size + if (results.size > 1) 1 else 0
+                    borderRight = true
                 }
             }
             botRow(result.name, scores)
@@ -132,14 +133,13 @@ private fun TableDsl.category(
                 }
                 sum / n
             }
-            botRow("Group Total", scores)
+            botRow("$title Average", scores)
         }
     }
 }
 
 private fun RowDsl.botRow(name: String, scores: List<Double>) {
     cell(name) {
-        borderLeft = true
         borderRight = true
     }
     val totalScore = scores.sum() / scores.size

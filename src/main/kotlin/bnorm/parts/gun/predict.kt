@@ -1,12 +1,11 @@
 package bnorm.parts.gun
 
-import bnorm.parts.RobotPart
 import bnorm.parts.contains
 import bnorm.parts.tank.TANK_SIZE
 import bnorm.robot.Robot
 import bnorm.robot.RobotScan
 
-fun RobotPart.generateSequence(
+fun Robot.generateSequence(
     robot: Robot,
     nextFunction: (prev: RobotScan, curr: RobotScan) -> RobotScan
 ): Sequence<RobotScan> = sequence {

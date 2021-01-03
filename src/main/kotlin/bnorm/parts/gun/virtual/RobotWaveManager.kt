@@ -32,6 +32,8 @@ class RobotWaveManager<T>(
     }
 
     fun fire(power: Double, value: T) {
+        if (power <= 0.0) return
+
         val selfLatest = source.latest
         val wave = Wave(
             origin = selfLatest.location,
@@ -39,6 +41,7 @@ class RobotWaveManager<T>(
             time = selfLatest.time,
             value = value
         )
+
         _waves.add(wave)
     }
 

@@ -1,11 +1,14 @@
 package bnorm
 
-import bnorm.kdtree.KdTree
+import bnorm.parts.gun.CircularPrediction
+import bnorm.parts.gun.DirectPrediction
+import bnorm.parts.gun.GuessFactorPrediction
+import bnorm.parts.gun.LinearPrediction
+import bnorm.parts.gun.virtual.VirtualGun
 import bnorm.parts.gun.buckets
 import bnorm.parts.gun.rotationDirection
 import bnorm.parts.gun.toGuessFactor
 import bnorm.parts.gun.virtual.Wave
-import bnorm.parts.gun.virtual.escapeAngle
 import bnorm.parts.gun.virtual.radius
 import bnorm.parts.tank.TANK_MAX_SPEED
 import bnorm.parts.tank.TANK_SIZE
@@ -24,7 +27,7 @@ fun Graphics2D.fillCircle(it: Vector, diameter: Int) {
     fillOval(it.x.toInt(), it.y.toInt(), diameter, diameter)
 }
 
-fun Graphics2D.drawWave(self: RobotScan, wave: Wave<WaveData>, time: Long) {
+fun Graphics2D.drawWave(self: RobotScan, wave: Wave<WaveData<RobotSnapshot>>, time: Long) {
 //    color = Color.blue
     val radius = wave.radius(time)
 //    drawCircle(wave.origin, radius)
@@ -43,6 +46,20 @@ fun Graphics2D.drawWave(self: RobotScan, wave: Wave<WaveData>, time: Long) {
     drawCluster(self, wave.value.scan, radius, wave.value.cluster)
 }
 
+fun Graphics2D.draw(gun: VirtualGun, time: Long) {
+    color = when (gun.prediction) {
+        is DirectPrediction -> Color.red
+        is LinearPrediction -> Color.orange
+        is CircularPrediction -> Color.yellow
+        is GuessFactorPrediction<*> -> Color.green
+        else -> Color.white
+    }
+
+    for (bullet in gun.bullets) {
+        drawLine(bullet.location(time - 1), bullet.location(time))
+    }
+}
+
 fun Graphics2D.drawCircle(center: Vector, radius: Double) {
     drawOval((center.x - radius).toInt(), (center.y - radius).toInt(), (2 * radius).toInt(), (2 * radius).toInt())
 }
@@ -56,9 +73,9 @@ fun Graphics2D.drawCluster(
     self: RobotScan,
     scan: RobotScan,
     radius: Double,
-    neighbors: List<KdTree.Neighbor<RobotSnapshot>>,
+    neighbors: List<WaveData.Node<RobotSnapshot>>,
 ) {
-    val buckets = neighbors.asSequence().buckets(31)
+    val buckets = neighbors.buckets(31)
 
     val max = buckets.maxOrNull()!!
     val min = buckets.minOrNull()!!
