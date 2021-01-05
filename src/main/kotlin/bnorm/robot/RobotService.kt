@@ -15,7 +15,6 @@ class RobotService(
     val self: Robot get() = _self!!
 
     operator fun get(name: String): Robot? = _alive[name]
-    fun closest(x: Double, y: Double): Robot? = _alive.values.minByOrNull { it.latest.location.r2(x, y) }
 
     fun <C : Any, V : Any, F : RobotContext.Feature<C, V>> Robot.install(
         feature: F,
@@ -66,3 +65,5 @@ class RobotService(
         _self!!.kill()
     }
 }
+
+fun RobotService.closest(x: Double, y: Double): Robot? = alive.minByOrNull { it.latest.location.r2(x, y) }

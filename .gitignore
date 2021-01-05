@@ -6,3 +6,6 @@ build/
 *.iml
 .idea/
 
+# Robocode
+.robocode/
+

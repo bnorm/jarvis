@@ -1,7 +1,6 @@
 package bnorm.tc
 
 import bnorm.toTable
-import jdk.nashorn.internal.ir.annotations.Ignore
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -13,7 +12,7 @@ class TargetingChallengeTest {
 
     @BeforeEach
     fun setup() {
-        engine = RobocodeEngine(File("build/robocode/download"))
+        engine = RobocodeEngine(File(".robocode"))
     }
 
     @AfterEach
@@ -22,7 +21,7 @@ class TargetingChallengeTest {
     }
 
     @Test
-    @Ignore
+    // @Disabled
     fun `targeting challenge 2k7`() {
         val challenge = engine.runTargetChallengeRandomMovement(
             targetBot = "bnorm.JarvisT*",

@@ -42,6 +42,12 @@ inline fun r(source: Vector, destination: Vector): Double =
 inline fun r(x: Double, y: Double, destination: Vector): Double =
     r(x, y, destination.x, destination.y)
 
+fun Double.roundToInt(decimals: Int): Double {
+    var mul = 1.0
+    repeat(decimals) { mul *= 10.0 }
+    return (this * mul).roundToInt() / mul
+}
+
 fun rollingVariance(
     n: Int,
     means: DoubleArray,

@@ -37,13 +37,8 @@ class VirtualGuns(
         }
     }
 
-    inline fun <reified T: Prediction> prediction(): T? {
-        for (gun in guns) {
-            if (gun.prediction is T) {
-                return gun.prediction
-            }
-        }
-        return null
+    inline fun <reified T: Prediction> prediction(): List<T> {
+        return guns.map { it.prediction }.filterIsInstance<T>()
     }
 
     fun fire(power: Double): Vector {

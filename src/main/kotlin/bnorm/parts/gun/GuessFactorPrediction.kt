@@ -3,12 +3,12 @@ package bnorm.parts.gun
 import bnorm.Polar
 import bnorm.Vector
 import bnorm.WaveData
-import bnorm.increasingBy
 import bnorm.kdtree.KdTree
 import bnorm.parts.tank.TANK_MAX_SPEED
 import bnorm.parts.tank.TANK_SIZE
 import bnorm.robot.Robot
 import bnorm.robot.RobotScan
+import bnorm.robot.RobotSnapshots
 import bnorm.signMul
 import bnorm.sqr
 import bnorm.theta
@@ -16,7 +16,6 @@ import robocode.Rules
 import robocode.util.Utils
 import kotlin.math.asin
 import kotlin.math.roundToInt
-import kotlin.time.measureTime
 
 interface GuessFactorSnapshot {
     val guessFactor: Double
@@ -36,7 +35,7 @@ class GuessFactorPrediction<T : GuessFactorSnapshot>(
 //        val robotAngle = robotAngle(distance)
 
         val heading = theta(self.latest.location, robot.latest.location)
-        val rotationDirection = rotationDirection(heading, robot.latest)
+        val rotationDirection = robot.context[RobotSnapshots].latest.rotateDirection // TODO
 
         val snapshot = snapshotFunction(robot)
         val cluster: List<WaveData.Node<T>>
@@ -90,7 +89,7 @@ fun rotationDirection(heading: Double, scan: RobotScan): Double {
     return signMul(robotBearing) * signMul(robotSpeed)
 }
 
-fun Iterable<WaveData.Node<GuessFactorSnapshot>>.buckets(bucketCount: Int, width: Int = 1): DoubleArray {
+fun Iterable<WaveData.Node<GuessFactorSnapshot>>.buckets(bucketCount: Int, width: Int = 3): DoubleArray {
     val sum = DoubleArray(bucketCount)
 
     forEach {

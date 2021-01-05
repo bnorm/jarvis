@@ -6,15 +6,12 @@ import bnorm.parts.gun.GuessFactorPrediction
 import bnorm.parts.gun.LinearPrediction
 import bnorm.parts.gun.virtual.VirtualGun
 import bnorm.parts.gun.buckets
-import bnorm.parts.gun.rotationDirection
 import bnorm.parts.gun.toGuessFactor
 import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.radius
 import bnorm.parts.tank.TANK_MAX_SPEED
-import bnorm.parts.tank.TANK_SIZE
 import bnorm.robot.RobotScan
 import bnorm.robot.RobotSnapshot
-import robocode.Rules
 import java.awt.Color
 import java.awt.Graphics2D
 import kotlin.math.asin
@@ -29,24 +26,24 @@ fun Graphics2D.fillCircle(it: Vector, diameter: Int) {
 
 fun Graphics2D.drawWave(self: RobotScan, wave: Wave<WaveData<RobotSnapshot>>, time: Long) {
 //    color = Color.blue
-    val radius = wave.radius(time)
+//    val radius = wave.radius(time)
 //    drawCircle(wave.origin, radius)
 //
 //    color = Color.yellow
-    val heading = theta(wave.origin, wave.value.scan.location)
+//    val heading = theta(wave.origin, wave.value.scan.location)
 //    val escapeAngle = wave.escapeAngle(TANK_MAX_SPEED)
 //    drawLine(wave.origin, wave.origin + Polar(heading - escapeAngle, radius))
 //    drawLine(wave.origin, wave.origin + Polar(heading + escapeAngle, radius))
 //
-    color = Color.red
-    val location = wave.origin + Polar(heading, radius)
-    drawCircle(location, TANK_SIZE / 2)
-    drawLine(location, location + wave.value.scan.velocity)
+//    color = Color.red
+//    val location = wave.origin + Polar(heading, radius)
+//    drawCircle(location, TANK_SIZE / 2)
+//    drawLine(location, location + wave.value.scan.velocity)
 
-    drawCluster(self, wave.value.scan, radius, wave.value.cluster)
+    drawCluster(wave, time)
 }
 
-fun Graphics2D.draw(gun: VirtualGun, time: Long) {
+fun Graphics2D.drawBullets(gun: VirtualGun, time: Long) {
     color = when (gun.prediction) {
         is DirectPrediction -> Color.red
         is LinearPrediction -> Color.orange
@@ -60,6 +57,23 @@ fun Graphics2D.draw(gun: VirtualGun, time: Long) {
     }
 }
 
+fun Graphics2D.drawSuccess(index: Int, gun: VirtualGun) {
+    color = when (gun.prediction) {
+        is DirectPrediction -> Color.red
+        is LinearPrediction -> Color.orange
+        is CircularPrediction -> Color.yellow
+        is GuessFactorPrediction<*> -> Color.green
+        else -> Color.white
+    }
+
+    val success = (100 * gun.success).toInt()
+    fillRect(0, 10 * index, success, 10)
+    drawRect(success, 10 * index, 100 - success, 10)
+
+    color = Color.white
+    drawString("${gun.success.roundToInt(3)}%", 110, 10 * index)
+}
+
 fun Graphics2D.drawCircle(center: Vector, radius: Double) {
     drawOval((center.x - radius).toInt(), (center.y - radius).toInt(), (2 * radius).toInt(), (2 * radius).toInt())
 }
@@ -69,31 +83,23 @@ fun Graphics2D.drawBox(center: Vector, side: Double) {
     drawRect((center.x - halfSide).toInt(), (center.y - halfSide).toInt(), side.toInt(), side.toInt())
 }
 
-fun Graphics2D.drawCluster(
-    self: RobotScan,
-    scan: RobotScan,
-    radius: Double,
-    neighbors: List<WaveData.Node<RobotSnapshot>>,
-) {
-    val buckets = neighbors.buckets(31)
+fun Graphics2D.drawCluster(wave: Wave<WaveData<RobotSnapshot>>, time: Long) {
+    val radius = wave.radius(time)
+    val buckets = wave.value.cluster.buckets(31)
 
     val max = buckets.maxOrNull()!!
     val min = buckets.minOrNull()!!
 
     //            println("buckets=${buckets.map { (99 * (it - min) / (max - min)).toInt() }}")
 
-    val theta = theta(self.location, scan.location)
-    val escapeAngle = asin(TANK_MAX_SPEED / Rules.getBulletSpeed(3.0))
-    val rotationDirection = rotationDirection(theta, scan)
+    val heading = theta(wave.origin, wave.value.scan.location)
+    val escapeAngle = asin(TANK_MAX_SPEED / wave.speed)
+    val rotationDirection = wave.value.snapshot.rotateDirection
 
     for (i in buckets.indices) {
         val green = (255 * (buckets[i] - min) / (max - min)).toInt()
-        color = Color(255 - green, green, 0)
+        color = Color(0, green, 255 - green)
         val gf = i.toGuessFactor(buckets.size)
-        //                if (buckets[i] == max) {
-        //                    println("gf = $gf -> ${buckets.map { it }}")
-        //                    println(neighbors.map { it.value.guessFactor })
-        //                }
-        fillCircle(self.location + Polar(theta + rotationDirection * gf * escapeAngle, radius), 4)
+        fillCircle(wave.origin + Polar(heading + rotationDirection * gf * escapeAngle, radius), if (wave.value.real) 8 else 3)
     }
 }

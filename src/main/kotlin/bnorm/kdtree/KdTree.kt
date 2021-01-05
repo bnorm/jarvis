@@ -8,6 +8,7 @@ import kotlin.collections.ArrayList
 
 class KdTree<T>(
     private val dimensionScales: DoubleArray,
+    bucketSize: Int = DEFAULT_BUCKET_SIZE,
     private val dimensionsFunction: (T) -> DoubleArray,
 ) {
     init {
@@ -16,19 +17,15 @@ class KdTree<T>(
 
     companion object {
         // TODO adjust bucket size
-        private const val BUCKET_SIZE = 100
+        const val DEFAULT_BUCKET_SIZE = 100
     }
 
     private class TreePoint<out T>(
         override val value: T,
         val dimensions: DoubleArray,
-        override var dist: Double = 0.0,
-        private var leaf: Node.Leaf<T>? = null
+        override var dist: Double = 0.0
     ) : Neighbor<T> {
         override fun compareTo(other: Neighbor<*>): Int = compareValues(dist, other.dist)
-        override fun remove() {
-            leaf?.remove(this)
-        }
     }
 
     private sealed class Node<T> {
@@ -37,8 +34,9 @@ class KdTree<T>(
         class Leaf<T>(
             dimensionsCount: Int,
             private val parentDimension: Int,
+            private val bucketSize: Int,
         ) : Node<T>() {
-            val bucket = ArrayList<TreePoint<T>>(BUCKET_SIZE + 10) // TODO actual array to avoid copy?
+            val bucket = ArrayList<TreePoint<T>>(DEFAULT_BUCKET_SIZE + 10) // TODO actual array to avoid copy?
 
             private val means = DoubleArray(dimensionsCount) { 0.0 }
             private val variances = DoubleArray(dimensionsCount) { 0.0 }
@@ -46,11 +44,7 @@ class KdTree<T>(
             override fun add(value: TreePoint<T>): Node<T> {
                 bucket.add(value)
                 rollingVariance(bucket.size, means, variances, value.dimensions)
-                return if (bucket.size > BUCKET_SIZE) split() else this
-            }
-
-            fun remove(point: TreePoint<T>) {
-                bucket.remove(point)
+                return if (bucket.size > DEFAULT_BUCKET_SIZE) split() else this
             }
 
             private fun split(): Branch<T> {
@@ -72,8 +66,8 @@ class KdTree<T>(
                 return Branch(
                     pivot,
                     dimension,
-                    Leaf<T>(variances.size, dimension).also { left.forEach(it::add) },
-                    Leaf<T>(variances.size, dimension).also { right.forEach(it::add) },
+                    Leaf<T>(variances.size, dimension, bucketSize).also { left.forEach(it::add) },
+                    Leaf<T>(variances.size, dimension, bucketSize).also { right.forEach(it::add) },
                 )
             }
 
@@ -116,7 +110,7 @@ class KdTree<T>(
         }
     }
 
-    private var root: Node<T> = Node.Leaf(dimensionScales.size, -1)
+    private var root: Node<T> = Node.Leaf(dimensionScales.size, -1, bucketSize)
 
     fun add(value: T) {
         val neighbor = TreePoint(value, dimensionsFunction(value))
@@ -126,8 +120,6 @@ class KdTree<T>(
     interface Neighbor<out T> : Comparable<Neighbor<*>> {
         val value: T
         val dist: Double
-
-        fun remove()
     }
 
     fun neighbors(point: T, size: Int): List<Neighbor<T>> {
@@ -215,13 +207,15 @@ class KdTree<T>(
             traverse(other.node)
         }
 
-        yieldAll(queue)
+        while (queue.isNotEmpty()) {
+            yield(queue.poll())
+        }
     }
 
     private fun dist(p1: DoubleArray, p2: DoubleArray): Double {
         var sum = 0.0
         for (i in dimensionScales.indices) {
-            sum += dimensionScales[i] * sqr(p1[i] - p2[i])
+            sum += sqr(dimensionScales[i] * (p1[i] - p2[i]))
         }
         return sum
     }

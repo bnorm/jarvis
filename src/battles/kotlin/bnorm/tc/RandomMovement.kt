@@ -32,7 +32,7 @@ fun RobocodeEngine.runTargetChallengeRandomMovement(
             "kc.Fortune 1.0",
             "simonton.micro.WeeklongObsession 1.5TC",
             "jam.micro.RaikoMicro 1.44TC",
-        )
+        ),
     )
 )
 

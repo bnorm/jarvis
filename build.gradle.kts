@@ -5,6 +5,8 @@ plugins {
     id("com.bnorm.robocode")
 }
 
+version = "0.1"
+
 repositories {
     mavenCentral()
 }
@@ -48,4 +50,35 @@ robocode {
             description = "Jarvis - Movement Only"
         }
     }
+}
+
+/*
+ * Gradle source set, configurations, and tasks for running battles.
+ */
+
+val battles by sourceSets.registering {
+    compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+    runtimeClasspath += sourceSets.main.get().output + sourceSets.test.get().output
+}
+
+val battlesImplementation by configurations.getting {
+    extendsFrom(configurations.testImplementation.get())
+}
+
+val battlesRuntimeOnly by configurations.getting {
+    extendsFrom(configurations.testRuntimeOnly.get())
+    extendsFrom(configurations.robocodeRuntime.get())
+}
+
+// TODO Should there be a different task for each different battle?
+val runBattles by project.tasks.registering(Test::class) {
+    dependsOn("robotBin")
+    // TODO Download robots for battles? Or is this part of tests?
+
+    description = "Runs Robocode battles"
+    group = "battles"
+
+    useJUnitPlatform()
+    testClassesDirs = battles.get().output.classesDirs
+    classpath = battles.get().runtimeClasspath
 }

@@ -51,7 +51,12 @@ class VirtualGun(
     private fun increment(hit: Boolean) {
         if (hit) this.hit++
         fired++
-        success = this.hit.toDouble() / fired
+        if (fired > 2000) {
+            // Rolling average over the last 2000
+            success = (1999 * success + if (hit) 1 else 0) / 2000
+        } else {
+            success = this.hit.toDouble() / fired
+        }
     }
 
     fun fire(power: Double): Vector {
