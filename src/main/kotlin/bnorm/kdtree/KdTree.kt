@@ -122,12 +122,12 @@ class KdTree<T>(
         val dist: Double
     }
 
-    fun neighbors(point: T, size: Int): List<Neighbor<T>> {
+    fun neighbors(point: T, size: Int): Collection<Neighbor<T>> {
         val pointDimensions = dimensionsFunction(point)
         val pointDimensionsCopy = pointDimensions.copyOf()
 
         val stack = ArrayDeque<Node<T>>()
-        val heap = SmallSizedHeap<TreePoint<T>>(size)
+        val heap = PriorityQueue<TreePoint<T>>(size, compareBy { -it.dist })
 
         stack.addLast(root)
         while (stack.isNotEmpty()) {
@@ -135,11 +135,14 @@ class KdTree<T>(
                 is Node.Leaf -> {
                     for (value in node.bucket) {
                         value.dist = dist(pointDimensions, value.dimensions)
-                        heap.add(value)
+                        if (heap.size < size || value.dist < heap.peek().dist) {
+                            if (heap.size >= size) heap.poll()
+                            heap.add(value)
+                        }
                     }
                 }
                 is Node.Branch -> {
-                    if (heap.size < size || dist(pointDimensions, pointDimensionsCopy, node) < heap.last.dist) {
+                    if (heap.size < size || dist(pointDimensions, pointDimensionsCopy, node) < heap.peek().dist) {
                         if (pointDimensions[node.dimension] <= node.pivot) {
                             stack.addLast(node.right)
                             stack.addLast(node.left)
@@ -152,7 +155,7 @@ class KdTree<T>(
             }
         }
 
-        return heap.toList()
+        return heap
     }
 
     fun neighbors(point: T): Sequence<Neighbor<T>> = sequence {

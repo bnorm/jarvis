@@ -1,10 +1,10 @@
 package bnorm.neural
 
+import bnorm.sqr
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.ln
-import kotlin.math.pow
 import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.tanh
@@ -34,7 +34,7 @@ interface Activation {
         }
 
         val Gaussian = object : Activation {
-            override fun invoke(v: Double): Double = exp(-v.pow(2.0))
+            override fun invoke(v: Double): Double = exp(-sqr(v))
             override fun derivative(v: Double): Double {
                 val derivative = -2 * v * invoke(v)
                 val nonZeroPositiveDerivative = abs(derivative).coerceAtLeast(1.354304923E-315)
@@ -49,7 +49,7 @@ interface Activation {
 
         val Tanh = object : Activation {
             override fun invoke(v: Double): Double = tanh(v)
-            override fun derivative(v: Double): Double = (1 - invoke(v).pow(2.0)).coerceAtLeast(2.220446049250313E-16)
+            override fun derivative(v: Double): Double = (1 - sqr(invoke(v))).coerceAtLeast(2.220446049250313E-16)
         }
 
         val SmoothMax = object : Activation {
@@ -69,7 +69,7 @@ interface Activation {
 
 class NeuralNetwork(
     vararg layers: Int,
-    private val activation: Activation = Activation.Sine,
+    private val activation: Activation = Activation.Sigmoid,
     biased: Boolean = false,
     // TODO include layer index
     initWeight: (inputNode: Int, outputNode: Int) -> Double = { _, _ ->
@@ -86,10 +86,10 @@ class NeuralNetwork(
         val biased: Boolean,
         initWeight: (inputNode: Int, outputNode: Int) -> Double
     ) {
-        val weights = Array(outputs) { outputNode ->
-            DoubleArray(inputs + if (biased) 1 else 0) { inputNode -> initWeight(inputNode, outputNode) }
-        }
+        val columns = inputs + if (biased) 1 else 0
+        val weights = DoubleArray(outputs * columns) { i -> initWeight(i, i) }
         val output = DoubleArray(outputs)
+        val h = DoubleArray(outputs)
     }
 
     val input = DoubleArray(layers.first())
@@ -109,11 +109,10 @@ class NeuralNetwork(
     private fun Layer.forward(input: DoubleArray) {
         for (o in 0 until outputs) {
             var sum = 0.0
-            val w = weights[o]
+            if (biased) sum += weights[o * columns + inputs] * 1.0
             for (i in 0 until inputs) {
-                sum += w[i] * input[i]
+                sum += weights[o * columns + i] * input[i]
             }
-            if (biased) sum += w[w.lastIndex] * 1.0
             output[o] = activation.invoke(sum)
         }
     }
@@ -128,86 +127,29 @@ class NeuralNetwork(
     }
 
     private fun Layer.train(alpha: Double, input: DoubleArray) {
-        val h = DoubleArray(outputs) { derivative(it, input) }
+        for (o in 0 until outputs) {
+            var delta = 0.0
+            if (biased) delta += weights[o * columns + inputs] * 1.0
+            for (i in 0 until inputs) {
+                delta += weights[o * columns + i] * input[i]
+            }
+            h[o] = activation.derivative(delta)
+        }
 
         if (biased) {
             for (o in 0 until outputs) {
-                weights[o][inputs] = weights[o][inputs] + alpha * 1.0 * output[o] * derivative(o, input)
+                weights[o * columns + inputs] = weights[o * columns + inputs] + alpha * output[o] * h[0]
             }
         }
 
         for (i in 0 until inputs) {
             var error = 0.0
             for (o in 0 until outputs) {
-                val w = weights[o][i]
+                val w = weights[o * columns + i]
                 error += w * output[o]
-                weights[o][i] = w + alpha * input[i] * output[o] * h[o]
+                weights[o * columns + i] = w + alpha * input[i] * output[o] * h[o]
             }
             input[i] = error
         }
     }
-
-    private fun Layer.derivative(output: Int, input: DoubleArray): Double {
-        if (activation is Activation.ConstantDerivative) return activation.derivative
-
-        val w = weights[output]
-        var h = 0.0
-        for (i in 0 until inputs) {
-            h += w[i] * input[i]
-        }
-        if (biased) h += w[inputs] * 1.0
-        return activation.derivative(h)
-    }
 }
-
-//fun main() {
-////    val weights = listOf(1.0, 1.0, -0.5, -1.0, -1.0, +1.5, 1.0, 1.0, -1.5).iterator()
-//    val network = NeuralNetwork(2, 4, 1, biased = true) { _, _ ->
-//        Random.nextDouble(0.5, 1.5)
-////        weights.next()
-//    }
-//
-//    network.printLayers()
-//
-//    println(run(network, 0.0, 0.0))
-//    println(run(network, 1.0, 0.0))
-//    println(run(network, 0.0, 1.0))
-//    println(run(network, 1.0, 1.0))
-//
-//    repeat(100) {
-//        train(network, 0.0, 0.0, 0.0)
-//        train(network, 1.0, 0.0, 1.0)
-//        train(network, 0.0, 1.0, 1.0)
-//        train(network, 1.0, 1.0, 0.0)
-//    }
-//
-//    network.printLayers()
-//
-//    println(run(network, 0.0, 0.0))
-//    println(run(network, 1.0, 0.0))
-//    println(run(network, 0.0, 1.0))
-//    println(run(network, 1.0, 1.0))
-//}
-//
-//private fun train(network: NeuralNetwork, i1: Double, i2: Double, expected: Double): Double {
-//    val actual = run(network, i1, i2)
-//    network.output[0] = expected - actual
-//    network.backprop(0.5)
-//    return actual
-//}
-//
-//private fun run(network: NeuralNetwork, i1: Double, i2: Double): Double {
-//    network.input[0] = i1
-//    network.input[1] = i2
-//    network.forward()
-//    return network.output[0]
-//}
-//
-//private fun NeuralNetwork.printLayers() {
-//    for ((l, layer) in layers.withIndex()) {
-//        println("layer ${l + 1}")
-//        for (weight in layer.weights) {
-//            println(weight.toList())
-//        }
-//    }
-//}

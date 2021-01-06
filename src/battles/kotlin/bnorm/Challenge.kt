@@ -142,11 +142,11 @@ private fun RowDsl.botRow(name: String, scores: List<Double>) {
         borderRight = true
     }
     val totalScore = scores.sum() / scores.size
-    cell(totalScore.roundToInt(1)) {
+    cell(totalScore.roundDecimals(1)) {
         borderLeft = true
         borderRight = true
     }
     for (score in scores) {
-        cell(score.roundToInt(1))
+        cell(score.roundDecimals(1))
     }
 }

@@ -1,19 +1,19 @@
 package bnorm
 
 import bnorm.kdtree.KdTree
+import bnorm.neural.Activation
+import bnorm.neural.NeuralNetwork
 import bnorm.parts.BattleField
 import bnorm.parts.gun.AntiGuessFactorPrediction
 import bnorm.parts.gun.CircularPrediction
 import bnorm.parts.gun.DirectPrediction
 import bnorm.parts.gun.GuessFactorPrediction
 import bnorm.parts.gun.LinearPrediction
-import bnorm.parts.gun.escapeAngle
-import bnorm.parts.gun.robotAngle
+import bnorm.parts.gun.NeuralGuessFactorPrediction
 import bnorm.parts.gun.virtual.VirtualGuns
 import bnorm.parts.gun.virtual.VirtualWaves
 import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.escapeAngle
-import bnorm.parts.gun.virtual.radius
 import bnorm.parts.radar.AdaptiveScan
 import bnorm.parts.radar.Radar
 import bnorm.parts.tank.MinimumRiskMovement
@@ -22,6 +22,7 @@ import bnorm.parts.tank.Tank
 import bnorm.parts.tank.orbit
 import bnorm.robot.*
 import com.jakewharton.picnic.RowDsl
+import com.jakewharton.picnic.table
 import robocode.AdvancedRobot
 import robocode.BulletHitEvent
 import robocode.RobotDeathEvent
@@ -35,6 +36,8 @@ import robocode.util.Utils
 import java.awt.Color
 import java.awt.Graphics2D
 import kotlin.math.*
+import kotlin.random.Random
+import kotlin.time.measureTime
 
 data class WaveData<out T>(
     val scan: RobotScan,
@@ -59,11 +62,25 @@ open class Jarvis @JvmOverloads constructor(
         object RobotSnapshotWaves : VirtualWaves.Feature<WaveData<RobotSnapshot>>()
 
         private val robotService = RobotService { robot ->
+
             val virtualTreeScales = DoubleArray(RobotSnapshot.DIMENSIONS.size) { 1.0 }
-            val virtualTree = KdTree(virtualTreeScales, KdTree.DEFAULT_BUCKET_SIZE, RobotSnapshot::guessFactorDimensions)
+            val virtualTree =
+                KdTree(virtualTreeScales, KdTree.DEFAULT_BUCKET_SIZE, RobotSnapshot::guessFactorDimensions)
 
             val realTreeScales = DoubleArray(RobotSnapshot.DIMENSIONS.size) { 1.0 }
             val realTree = KdTree(virtualTreeScales, KdTree.DEFAULT_BUCKET_SIZE, RobotSnapshot::guessFactorDimensions)
+
+            val gfTree = KdTree<RobotSnapshot>(doubleArrayOf(1.0), KdTree.DEFAULT_BUCKET_SIZE) {
+                doubleArrayOf(it.guessFactor)
+            }
+            val neuralNetwork = NeuralNetwork(
+                2 * RobotSnapshot.DIMENSIONS.size + 1, 2 * 31, 2 * 31, 31,
+                activation = Activation.Sigmoid, biased = true,
+            )
+
+            val virtualGf = GuessFactorPrediction(self, virtualTree) { it.context[RobotSnapshots].latest }
+            val realGf = GuessFactorPrediction(self, realTree) { it.context[RobotSnapshots].latest }
+            val neuralGf = NeuralGuessFactorPrediction(self, neuralNetwork, virtualGf, RobotSnapshot::guessFactorDimensions)
 
             robot.install(RobotSnapshots) {
                 factory = RobotSnapshots.Factory { scan, prevSnapshot ->
@@ -72,28 +89,44 @@ open class Jarvis @JvmOverloads constructor(
             }
 
             robot.install(VirtualGuns) {
-                val positive = GuessFactorPrediction(self, virtualTree) { it.context[RobotSnapshots].latest }
-                val negative = GuessFactorPrediction(self, realTree) { it.context[RobotSnapshots].latest }
                 predictions = listOf(
                     DirectPrediction(self),
                     LinearPrediction(self),
                     CircularPrediction(self),
-                    positive,
-                    negative,
-                    AntiGuessFactorPrediction(self, positive, negative)
+                    virtualGf,
+                    realGf,
+//                    AntiGuessFactorPrediction(self, virtualGf, realGf),
+                    neuralGf,
                 )
             }
 
             robot.install(RobotSnapshotWaves) {
                 listen { wave ->
                     val waveSnapshot = wave.value.snapshot
-                    waveSnapshot.guessFactor = wave.guessFactor(robot.latest)
+                    val guessFactor = wave.guessFactor(robot.latest)
+                    waveSnapshot.guessFactor = guessFactor
                     if (wave.value.real) {
                         realTree.add(waveSnapshot)
                         trainDimensionScales(realTreeScales, wave, robot.latest.time)
                     } else {
                         virtualTree.add(waveSnapshot)
                         trainDimensionScales(virtualTreeScales, wave, robot.latest.time)
+
+//                        val neighbors = gfTree.neighbors(waveSnapshot, 100)
+//                        gfTree.add(waveSnapshot)
+
+//                        println("Common GF")
+//                        printSnapshots(waveSnapshot, neighbors.map { it.value })
+//
+//                        println("Common Snapshots")
+//                        printSnapshots(waveSnapshot, wave.value.cluster.map { it.value })
+
+//                        for (neighbor in neighbors) {
+//                            neuralGf.train(waveSnapshot, neighbor.value, guessFactor)
+//                        }
+                        println("training " + measureTime {
+                            neuralGf.train(waveSnapshot, wave.value.cluster.map { it.value }, guessFactor)
+                        })
                     }
                 }
             }
@@ -157,26 +190,26 @@ open class Jarvis @JvmOverloads constructor(
     }
 
     override fun onSkippedTurn(event: SkippedTurnEvent) {
-//        tree.print()
         println("SKIPPED! ${event.skippedTurn} ${time}")
     }
 
     override fun onPaint(g: Graphics2D) {
-        g.color = Color.white
-        val self = robotService.self
-        val target = robotService.closest(self.latest.location.x, self.latest.location.y)
-        if (target != null) {
-            self.orbit(target, 500.0)
-                .take(100)
-                .forEach {
-                    g.drawCircle(it, 2.0)
-                }
-            self.orbit(target, 500.0)
-                .take(100)
-                .forEach {
-                    g.drawCircle(it, 2.0)
-                }
-        }
+//        val self = robotService.self
+//        val target = robotService.closest(self.latest.location.x, self.latest.location.y)
+//        if (target != null) {
+//            g.color = Color.green
+//            self.orbit(target, 500.0, Double.POSITIVE_INFINITY)
+//                .take(50)
+//                .forEach {
+//                    g.drawCircle(it, 2.0)
+//                }
+//            g.color = Color.red
+//            self.orbit(target, 500.0, Double.NEGATIVE_INFINITY)
+//                .take(50)
+//                .forEach {
+//                    g.drawCircle(it, 2.0)
+//                }
+//        }
 
         val time = time
 
@@ -187,10 +220,10 @@ open class Jarvis @JvmOverloads constructor(
                 g.drawSuccess(index, gun)
             }
 
-            val virtualWaves = robot.context[RobotSnapshotWaves]
-            for (wave in virtualWaves.waves) {
-                g.drawWave(robotService.self.latest, wave, time)
-            }
+//            val virtualWaves = robot.context[RobotSnapshotWaves]
+//            for (wave in virtualWaves.waves) {
+//                g.drawWave(robotService.self.latest, wave, time)
+//            }
         }
 
 //        val target = robotService.closest(x, y)
@@ -250,10 +283,63 @@ open class Jarvis @JvmOverloads constructor(
     }
 }
 
-private fun RowDsl.dimension(values: DoubleArray) {
-    for (v in values) {
-        cell((v * 1000).toInt() / 1000.0)
+
+private fun printSnapshots(actual: RobotSnapshot, cluster: List<RobotSnapshot>) {
+    if (cluster.isEmpty()) return
+
+    val dimensions = RobotSnapshot.DIMENSIONS.size
+
+    val values = Array(dimensions) { DoubleArray(cluster.size) }
+
+    var n = 0
+    val sums = DoubleArray(dimensions)
+    val mins = DoubleArray(dimensions)
+    val maxs = DoubleArray(dimensions)
+    val means = DoubleArray(dimensions)
+    val variances = DoubleArray(dimensions)
+
+    for (neighbor in cluster) {
+        for (d in 0 until dimensions) {
+            values[d][n] = neighbor.guessFactorDimensions[d]
+            sums[d] += neighbor.guessFactorDimensions[d]
+            mins[d] = minOf(neighbor.guessFactorDimensions[d], mins[d])
+            maxs[d] = maxOf(neighbor.guessFactorDimensions[d], maxs[d])
+        }
+        rollingVariance(++n, means, variances, neighbor.guessFactorDimensions)
     }
+
+    val medians = DoubleArray(dimensions)
+    for ((d, value) in values.withIndex()) {
+        value.sort()
+        medians[d] = value[value.size / 2]
+    }
+
+    val stddev = DoubleArray(dimensions)
+    for ((d, variance) in variances.withIndex()) {
+        stddev[d] = sqrt(variance)
+    }
+
+    val goodBad = (0 until dimensions)
+        .map { d -> if (stddev[d] < 0.2 && abs(actual.guessFactorDimensions[d] - medians[d]) < stddev[d]) "Y" else "N" }
+
+//    if (goodBad.any { it == "Y" }) {
+        println(table {
+            cellStyle { border = true }
+            row { cell("Dimensions"); RobotSnapshot.DIMENSIONS.forEach { cell(it.name) } }
+            row { cell("Actual"); dimension(actual.guessFactorDimensions) }
+            row { cell("Min"); dimension(mins) }
+            row { cell("Max"); dimension(maxs) }
+            row { cell("Median"); dimension(medians) }
+            row { cell("Mean"); dimension(means) }
+            row { cell("Variance"); dimension(variances) }
+            row { cell("StdDev"); dimension(stddev) }
+            row {
+                cell("Good?")
+                goodBad.forEach { cell(it) }
+            }
+        })
+        println()
+//    }
 }
 
 fun <T : Comparable<T>> Iterable<T>.increasing(): Boolean {
@@ -298,56 +384,56 @@ private fun trainDimensionScales(
     wave: Wave<WaveData<RobotSnapshot>>,
     time: Long
 ) {
-    val distance = wave.radius(time)
-    val snapshot = wave.value.snapshot
-
-    val delta = robotAngle(distance) / escapeAngle(TANK_MAX_SPEED)
-    val gf = snapshot.guessFactor
-
-    var t = 0
-    val tMeans = DoubleArray(dimensionScale.size)
-    val tVariances = DoubleArray(dimensionScale.size)
-
-    var g = 0
-    val gMeans = DoubleArray(dimensionScale.size)
-    val gVariances = DoubleArray(dimensionScale.size)
-
-    var b = 0
-    val bMeans = DoubleArray(dimensionScale.size)
-    val bVariances = DoubleArray(dimensionScale.size)
-
-    for (neighbor in wave.value.cluster) {
-        val dimensions = neighbor.value.guessFactorDimensions
-        rollingVariance(++t, tMeans, tVariances, dimensions)
-
-        if (abs(gf - neighbor.value.guessFactor) < delta) {
-            rollingVariance(++g, gMeans, gVariances, dimensions)
-        } else {
-            rollingVariance(++b, bMeans, bVariances, dimensions)
-        }
-    }
-
-    // if 5% of predictions were good...
-    if (g >= t / 20) {
-        for (i in dimensionScale.indices) {
-            if (gVariances[i] > 0.0) {
-                val scale = dimensionScale[i]
-                val weight = 2.0 / (1.0 + scale)
-
-                val gDist = sqr(gMeans[i] - snapshot.guessFactorDimensions[i])
-                val bDist = sqr(bMeans[i] - snapshot.guessFactorDimensions[i])
-
-                if (gDist < bDist && gDist < gVariances[i] && gVariances[i] < bVariances[i]) {
-                    dimensionScale[i] = (scale + weight * 0.01)
-                }
-            }
-        }
-
-        val sum = dimensionScale.sum()
-        for (i in dimensionScale.indices) {
-            dimensionScale[i] = (dimensionScale[i] * dimensionScale.size / sum)
-        }
-    }
+//    val distance = wave.radius(time)
+//    val snapshot = wave.value.snapshot
+//
+//    val delta = robotAngle(distance) / escapeAngle(TANK_MAX_SPEED)
+//    val gf = snapshot.guessFactor
+//
+//    var t = 0
+//    val tMeans = DoubleArray(dimensionScale.size)
+//    val tVariances = DoubleArray(dimensionScale.size)
+//
+//    var g = 0
+//    val gMeans = DoubleArray(dimensionScale.size)
+//    val gVariances = DoubleArray(dimensionScale.size)
+//
+//    var b = 0
+//    val bMeans = DoubleArray(dimensionScale.size)
+//    val bVariances = DoubleArray(dimensionScale.size)
+//
+//    for (neighbor in wave.value.cluster) {
+//        val dimensions = neighbor.value.guessFactorDimensions
+//        rollingVariance(++t, tMeans, tVariances, dimensions)
+//
+//        if (abs(gf - neighbor.value.guessFactor) < delta) {
+//            rollingVariance(++g, gMeans, gVariances, dimensions)
+//        } else {
+//            rollingVariance(++b, bMeans, bVariances, dimensions)
+//        }
+//    }
+//
+//    // if 5% of predictions were good...
+//    if (g >= t / 20) {
+//        for (i in dimensionScale.indices) {
+//            if (gVariances[i] > 0.0) {
+//                val scale = dimensionScale[i]
+//                val weight = 2.0 / (1.0 + scale)
+//
+//                val gDist = sqr(gMeans[i] - snapshot.guessFactorDimensions[i])
+//                val bDist = sqr(bMeans[i] - snapshot.guessFactorDimensions[i])
+//
+//                if (gDist < bDist && gDist < gVariances[i] && gVariances[i] < bVariances[i]) {
+//                    dimensionScale[i] = (scale + weight * 0.01)
+//                }
+//            }
+//        }
+//
+//        val sum = dimensionScale.sum()
+//        for (i in dimensionScale.indices) {
+//            dimensionScale[i] = (dimensionScale[i] * dimensionScale.size / sum)
+//        }
+//    }
 
 //        println(table {
 //            cellStyle { border = true }
@@ -362,4 +448,10 @@ private fun trainDimensionScales(
 //            row { cell("All"); cell(t); dimension(tVariances) }
 //        })
 //        println()
+}
+
+private fun RowDsl.dimension(values: DoubleArray) {
+    for (v in values) {
+        cell((v * 1000).toInt() / 1000.0)
+    }
 }

@@ -16,49 +16,42 @@ import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.tan
 
-fun Robot.orbit(target: Robot, radius: Double) = simulate { location, velocity ->
+fun Robot.orbit(target: Robot, radius: Double, distance: Double) = simulate { location, velocity ->
     val heading = velocity.theta
-    val newSpeed = (velocity.r + signMul(velocity.r)).coerceIn(-TANK_MAX_SPEED, TANK_MAX_SPEED)
+    val theta = location.theta(target.latest.location)
+    val bearingOffset = PI / 2 - atan((abs(velocity.r) / 2) / radius)
 
-    val desiredBearing = PI / 2 - atan((abs(velocity.r) / 2) / radius)
-    val bearing = location.theta(target.latest.location)
+    val clockwise = theta - bearingOffset
+    val counter = theta + bearingOffset
 
-    val clockwise = bearing - desiredBearing
-    val counter = bearing + desiredBearing
-
-    fun closest(heading: Double, h1: Double, h2: Double): Double {
-        return if (abs(Utils.normalRelativeAngle(h1 - heading)) < abs(Utils.normalRelativeAngle(h2 - heading))) {
-            h1
-        } else {
-            h2
-        }
+    fun closestBearing(heading: Double, h1: Double, h2: Double): Double {
+        val b1 = Utils.normalRelativeAngle(h1 - heading)
+        val b2 = Utils.normalRelativeAngle(h2 - heading)
+        return if (abs(b1) < abs(b2)) b1 else b2
     }
 
-    if (newSpeed < 0) {
-        Polar(closest(heading, clockwise, counter), newSpeed)
+    if (sign(distance) < 0) {
+        Polar(closestBearing(heading + PI, clockwise, counter), distance)
     } else {
-        Polar(closest(heading, clockwise + PI, counter + PI), newSpeed)
+        Polar(closestBearing(heading, clockwise, counter), distance)
     }
 }
 
 fun Robot.simulate(
-    nextFunction: (location: Vector.Cartesian, velocity: Vector.Polar) -> Vector.Polar,
-) = battleField.simulate(latest.location, latest.velocity, nextFunction)
+    movementFunction: (location: Vector.Cartesian, velocity: Vector.Polar) -> Vector.Polar,
+) = battleField.simulate(latest.location, latest.velocity, movementFunction)
 
 fun BattleField.simulate(
     location: Vector.Cartesian,
     velocity: Vector.Polar,
-    nextFunction: (location: Vector.Cartesian, velocity: Vector.Polar) -> Vector.Polar,
+    movementFunction: (location: Vector.Cartesian, velocity: Vector.Polar) -> Vector.Polar,
 ): Sequence<Vector.Cartesian> {
-    val battleField = this
     return sequence {
         var location = location
         var velocity = velocity
         while (true) {
-            val v = nextFunction(location, velocity)
-                .coerceVelocity(velocity)
-                .smooth(battleField, location, velocity)
-                .coerceVelocity(velocity)
+            val move = smooth(this@simulate, location, velocity, movementFunction(location, velocity))
+            val v = simulateVelocity(velocity, move.theta, move.r)
             location += v
             yield(location)
             velocity = v
@@ -66,11 +59,59 @@ fun BattleField.simulate(
     }
 }
 
-fun Vector.Polar.coerceVelocity(prevVelocity: Vector.Polar): Vector.Polar {
-    val bearing = Utils.normalRelativeAngle(theta - prevVelocity.theta)
-    val turnRate = Rules.getTurnRateRadians(prevVelocity.r)
-    return if (abs(bearing) <= turnRate) this
-    else Polar(prevVelocity.theta + sign(bearing) * turnRate, r)
+fun simulateVelocity(velocity: Vector.Polar, turn: Double, distance: Double): Vector.Polar =
+    Vector.Polar(velocity.theta + simulateTurn(velocity.r, turn), simulateSpeed(velocity.r, distance))
+
+fun simulateTurn(currentSpeed: Double, turn: Double): Double =
+    if (turn < 0.0) -simulateTurn(currentSpeed, -turn)
+    else turn.coerceAtMost(Rules.getTurnRateRadians(currentSpeed))
+
+fun simulateSpeed(currentSpeed: Double, distance: Double): Double {
+    if (distance < 0.0) {
+        // Flip function so distance is always positive
+        return -simulateSpeed(-currentSpeed, -distance)
+    }
+
+    if (currentSpeed < 0.0) {
+        // decelerating
+        val newSpeed = currentSpeed + TANK_DECELERATION
+        if (newSpeed > 0.0) {
+            // flipped from decelerating to accelerating
+            val decelerationTime = -currentSpeed / TANK_DECELERATION
+            val accelerationTime = 1.0 - decelerationTime
+            return (TANK_DECELERATION * decelerationTime * decelerationTime +
+                    TANK_ACCELERATION * accelerationTime * accelerationTime)
+                .coerceAtMost(distance).coerceAtMost(TANK_MAX_SPEED)
+        }
+        return newSpeed
+    } else {
+        val decelerationTime = currentSpeed / TANK_DECELERATION
+        val decelerationDistance = 0.5 * TANK_DECELERATION * decelerationTime * decelerationTime + decelerationTime
+        if (distance <= decelerationDistance) {
+            // start decelerating so velocity is 0 when distance is 0
+            val time = decelerationDistance / (decelerationTime + 1)
+            if (time <= 1) {
+                return (currentSpeed - TANK_DECELERATION).coerceAtMost(distance)
+            } else {
+                val newSpeed = time * TANK_DECELERATION
+                if (currentSpeed < newSpeed) {
+                    return currentSpeed
+                } else if (currentSpeed - newSpeed > TANK_DECELERATION) {
+                    return currentSpeed - TANK_DECELERATION
+                } else {
+                    return newSpeed
+                }
+            }
+        } else {
+            // accelerating
+            return (currentSpeed + TANK_ACCELERATION).coerceAtMost(TANK_MAX_SPEED)
+        }
+    }
+}
+
+fun Vector.Polar.coerceTurn(prevVelocity: Vector.Polar): Vector.Polar {
+    val turn = Utils.normalRelativeAngle(theta - prevVelocity.theta)
+    return Polar(prevVelocity.theta + simulateTurn(prevVelocity.r, turn), r)
 }
 
 private fun radius(speed: Double): Double {
@@ -81,13 +122,16 @@ private fun radius(speed: Double): Double {
 val TANK_MAX_SPEED_RADIUS = radius(TANK_MAX_SPEED)
 const val SMOOTH_WALL_TANK_BUFFER = TANK_SIZE / 2 + 1
 
-fun Vector.Polar.smooth(
+fun smooth(
     battleField: BattleField,
     location: Vector.Cartesian,
-    prevVelocity: Vector.Polar
+    velocity: Vector.Polar,
+    movement: Vector.Polar
 ): Vector.Polar {
+    // TODO will movement turn into the danger zone?
+
     // Get movement heading
-    val heading = theta + if (r < 0) PI else 0.0
+    val heading = velocity.theta + if (velocity.r < 0) PI else 0.0
 
     val xWallBearing: Double
     val xWallDistance: Double
@@ -126,12 +170,12 @@ fun Vector.Polar.smooth(
         if (smoothYWall) {
             // Smooth X & Y wall
             // TODO over correct and let velocity coerce fix it
-            val turnRate = 2 * Rules.getTurnRateRadians(prevVelocity.r)
+            val turnRate = 2 * Rules.getTurnRateRadians(velocity.r)
 
             if (xWallStick - xWallDistance > yWallStick - yWallDistance) {
-                Vector.Polar(theta + signMul(xWallBearing) * turnRate, r)
+                Vector.Polar(signMul(xWallBearing) * turnRate, movement.r)
             } else {
-                Vector.Polar(theta + signMul(yWallBearing) * turnRate, r)
+                Vector.Polar(signMul(yWallBearing) * turnRate, movement.r)
             }
         } else {
             // Smooth X wall
@@ -140,9 +184,9 @@ fun Vector.Polar.smooth(
                 .coerceAtMost(TANK_MAX_SPEED_RADIUS)
             val turn = asin(opposite / TANK_MAX_SPEED_RADIUS) - abs(xWallBearing)
             if (turn > 0) {
-                Vector.Polar(theta + signMul(xWallBearing) * turn, r)
+                Vector.Polar(signMul(xWallBearing) * turn, movement.r)
             } else {
-                this
+                movement
             }
         }
     } else if (smoothYWall) {
@@ -152,11 +196,11 @@ fun Vector.Polar.smooth(
             .coerceAtMost(TANK_MAX_SPEED_RADIUS)
         val turn = asin(opposite / TANK_MAX_SPEED_RADIUS) - abs(yWallBearing)
         if (turn > 0) {
-            Vector.Polar(theta + signMul(yWallBearing) * turn, r)
+            Vector.Polar(signMul(yWallBearing) * turn, movement.r)
         } else {
-            this
+            movement
         }
     } else {
-        this
+        movement
     }
 }

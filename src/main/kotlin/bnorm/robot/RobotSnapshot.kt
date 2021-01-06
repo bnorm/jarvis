@@ -37,6 +37,7 @@ data class RobotSnapshot(
     val cornerDistance: Double,
     val cornerDirection: Double,
 ) : GuessFactorSnapshot {
+    val nTime: Double get() = normalize(scan.time)
     val nTimeSinceMovement: Double get() = normalize(timeSinceMovement)
     val nTimeSinceReverse: Double get() = normalize(timeSinceReverse)
     val nTimeSinceDeceleration: Double get() = normalize(timeSinceDeceleration)
@@ -51,10 +52,11 @@ data class RobotSnapshot(
             RobotSnapshot::distLast10,
             RobotSnapshot::distLast30,
             RobotSnapshot::distLast90,
+            RobotSnapshot::nTime,
             RobotSnapshot::nTimeSinceMovement,
             RobotSnapshot::nTimeSinceReverse,
             RobotSnapshot::nTimeSinceDeceleration,
-            RobotSnapshot::nTimeSinceBullet,
+//            RobotSnapshot::nTimeSinceBullet,
 //            RobotSnapshot::wallDistance,
             RobotSnapshot::forwardWallDistance,
             RobotSnapshot::backwardWallDistance,
@@ -109,7 +111,7 @@ fun RobotSnapshot?.timeSinceBullet(robot: Robot): Long {
 }
 
 fun normalize(value: Long): Double = 1.0 - 1.0 / (1.0 + value)
-fun normalize(min: Double, value: Double, max: Double): Double = 2.0 * (value - min) / (max - min) - 1.0
+fun normalize(min: Double, value: Double, max: Double): Double = (value - min) / (max - min)
 
 fun RobotService.robotSnapshot(
     scan: RobotScan,

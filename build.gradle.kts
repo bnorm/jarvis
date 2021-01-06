@@ -2,7 +2,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.4.21"
+    kotlin("kapt") version "1.4.21"
     id("com.bnorm.robocode")
+    id("me.champeau.gradle.jmh") version "0.5.2"
 }
 
 version = "0.1"
@@ -17,6 +19,9 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
+
+    jmh("org.openjdk.jmh:jmh-core:1.27")
+    kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:1.27")
 }
 
 tasks.withType<KotlinCompile> {
@@ -50,6 +55,11 @@ robocode {
             description = "Jarvis - Movement Only"
         }
     }
+}
+
+jmh {
+    jvmArgs.plusAssign(listOf("-Djmh.separateClasspathJAR=true"))
+    duplicateClassesStrategy = DuplicatesStrategy.WARN
 }
 
 /*

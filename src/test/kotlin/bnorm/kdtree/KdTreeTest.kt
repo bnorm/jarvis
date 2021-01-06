@@ -17,7 +17,7 @@ class KdTreeTest {
         tree.add(Point(-1.0, -1.0))
         tree.add(Point(-1.0, 1.0))
 
-        val neighbors = tree.neighbors(Point(0.5, 1.0)).toList()
+        val neighbors = tree.neighbors(Point(0.2, 1.0)).toList()
         assertEquals(
             listOf(Point(1.0, 1.0), Point(-1.0, 1.0), Point(1.0, -1.0), Point(-1.0, -1.0)),
             neighbors.map { it.value },
@@ -34,11 +34,10 @@ class KdTreeTest {
         tree.add(Point(-1.0, -1.0))
         tree.add(Point(-1.0, 1.0))
 
-        val neighbors = tree.neighbors(Point(0.5, 1.0), 3)
+        val neighbors = tree.neighbors(Point(0.2, 1.0), 3).map { it.value }.toSet()
         assertEquals(
-            listOf(Point(1.0, 1.0), Point(-1.0, 1.0), Point(1.0, -1.0)),
-            neighbors.map { it.value },
-            neighbors.joinToString { "${it.value}:${it.dist}" }
+            setOf(Point(1.0, 1.0), Point(-1.0, 1.0), Point(1.0, -1.0)),
+            neighbors
         )
     }
 }

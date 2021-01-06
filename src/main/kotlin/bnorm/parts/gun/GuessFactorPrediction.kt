@@ -41,7 +41,7 @@ class GuessFactorPrediction<T : GuessFactorSnapshot>(
         val cluster: List<WaveData.Node<T>>
 
 //        println("cluster: " + measureTime {
-            cluster = clustering.neighbors(snapshot, 50)
+            cluster = clustering.neighbors(snapshot, 100)
                 .map { WaveData.Node(it.value, it.dist) }
 //        })
 

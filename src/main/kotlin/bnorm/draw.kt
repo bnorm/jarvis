@@ -71,7 +71,7 @@ fun Graphics2D.drawSuccess(index: Int, gun: VirtualGun) {
     drawRect(success, 10 * index, 100 - success, 10)
 
     color = Color.white
-    drawString("${gun.success.roundToInt(3)}%", 110, 10 * index)
+    drawString("${gun.success.roundDecimals(3)}%", 110, 10 * index)
 }
 
 fun Graphics2D.drawCircle(center: Vector, radius: Double) {
