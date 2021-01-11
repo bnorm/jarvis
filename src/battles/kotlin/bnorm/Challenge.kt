@@ -5,6 +5,7 @@ import com.jakewharton.picnic.RowDsl
 import com.jakewharton.picnic.TableDsl
 import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.table
+import kotlin.math.roundToLong
 
 data class Challenge(
     val name: String,
@@ -149,4 +150,10 @@ private fun RowDsl.botRow(name: String, scores: List<Double>) {
     for (score in scores) {
         cell(score.roundDecimals(1))
     }
+}
+
+private fun Double.roundDecimals(decimals: Int): Double {
+    var mul = 1.0
+    repeat(decimals) { mul *= 10.0 }
+    return (this * mul).roundToLong() / mul
 }

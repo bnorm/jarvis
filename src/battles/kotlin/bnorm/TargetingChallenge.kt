@@ -1,13 +1,12 @@
-package bnorm.tc
+package bnorm
 
-import bnorm.toTable
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import robocode.control.RobocodeEngine
 import java.io.File
 
-class TargetingChallengeTest {
+class TargetingChallenge {
     private lateinit var engine: RobocodeEngine
 
     @BeforeEach
@@ -21,11 +20,34 @@ class TargetingChallengeTest {
     }
 
     @Test
-    // @Disabled
-    fun `targeting challenge 2k7`() {
-        val challenge = engine.runTargetChallengeRandomMovement(
+    fun `Random Movement`() {
+        val challenge = engine.challenge1v1(
             targetBot = "bnorm.JarvisT*",
-            sessions = 10
+            sessions = 10,
+            name = "Targeting Challenge: Random Movement",
+            groups = mapOf(
+                "Easy" to listOf(
+                    "apv.AspidMovement 1.0",
+                    "dummy.micro.Sparrow 2.5TC",
+                    "kawigi.mini.Fhqwhgads 1.1TC",
+                    "emp.Yngwie 1.0",
+                    "kawigi.sbf.FloodMini 1.4TC",
+                ),
+                "Medium" to listOf(
+                    "abc.Tron 2.01",
+                    "wiki.etc.HTTC 1.0",
+                    "wiki.etc.RandomMovementBot 1.0",
+                    "davidalves.micro.DuelistMicro 2.0TC",
+                    "gh.GrubbmGrb 1.2.4TC",
+                ),
+                "Hard" to listOf(
+                    "pe.SandboxDT 1.91TC",
+                    "cx.mini.Cigaret 1.31TC",
+                    "kc.Fortune 1.0",
+                    "simonton.micro.WeeklongObsession 1.5TC",
+                    "jam.micro.RaikoMicro 1.44TC",
+                ),
+            )
         )
         println(challenge.toTable())
 
@@ -34,31 +56,31 @@ class TargetingChallengeTest {
 ─────────────────────────────────────────────────┬───────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────
                        Bot                       │ Score │ Session 1  Session 2  Session 3  Session 4  Session 5  Session 6  Session 7  Session 8  Session 9  Session 10
 ────────┬────────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-        │                  apv.AspidMovement 1.0 │  93.1 │      90.6       92.4       88.9       93.9       92.1       96.8       95.2       93.5       96.0        91.5
-        │              dummy.micro.Sparrow 2.5TC │  97.4 │      97.4       97.6       99.9       96.9       98.4       94.5       97.9       95.7       97.9        98.1
-        │            kawigi.mini.Fhqwhgads 1.1TC │  97.4 │      91.4       99.0       99.8       94.7       98.1       98.0       97.3       98.6       98.3        99.3
-   Easy │                         emp.Yngwie 1.0 │  98.8 │      98.9       99.8      100.0       97.7       97.6       98.3       98.4       99.4       99.9        98.1
-        │             kawigi.sbf.FloodMini 1.4TC │  91.5 │      93.0       94.1       95.6       93.3       94.2       80.5       77.0       97.8       95.5        93.9
+        │                  apv.AspidMovement 1.0 │  92.7 │      92.5       97.0       93.5       86.3       90.2       92.3       92.6       92.6       96.1        93.8
+        │              dummy.micro.Sparrow 2.5TC │  97.8 │      97.0       98.6       96.9       96.9       98.9       99.3       96.0       99.4       97.6        97.5
+        │            kawigi.mini.Fhqwhgads 1.1TC │  96.7 │      93.4       95.9       98.2       99.3       99.1       97.5       97.4       99.3       95.4        91.2
+   Easy │                         emp.Yngwie 1.0 │  98.3 │      97.7       95.1       96.4       99.3       97.8       98.6      100.0       98.8      100.0        99.3
+        │             kawigi.sbf.FloodMini 1.4TC │  91.9 │      86.4       91.0       98.6       91.2       96.2       96.1       75.5       95.6       93.6        94.4
         ├────────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-        │                           Easy Average │  95.7 │      94.3       96.6       96.8       95.3       96.1       93.6       93.2       97.0       97.5        96.2
+        │                           Easy Average │  95.5 │      93.4       95.5       96.7       94.6       96.4       96.7       92.3       97.2       96.5        95.2
 ────────┼────────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-        │                          abc.Tron 2.01 │  89.5 │      93.1       84.0       88.5       89.5       95.7       84.6       87.2       93.6       88.2        90.4
-        │                      wiki.etc.HTTC 1.0 │  79.0 │      76.1       81.1       78.2       79.5       75.1       82.2       77.3       79.4       74.7        86.0
-        │         wiki.etc.RandomMovementBot 1.0 │  90.4 │      90.0       93.0       96.1       97.6       88.1       90.1       93.3       90.1       87.5        78.7
- Medium │    davidalves.micro.DuelistMicro 2.0TC │  79.3 │      72.1       74.5       83.1       68.0       85.0       85.3       81.7       87.0       80.1        76.6
-        │                   gh.GrubbmGrb 1.2.4TC │  82.4 │      78.2       81.3       79.2       85.1       95.7       86.1       85.7       81.3       76.3        75.0
+        │                          abc.Tron 2.01 │  88.7 │      81.3       92.4       93.9       89.0       91.4       89.7       88.1       83.4       90.9        87.0
+        │                      wiki.etc.HTTC 1.0 │  86.2 │      86.4       91.9       85.9       86.9       77.1       81.5       89.5       93.4       78.1        91.7
+        │         wiki.etc.RandomMovementBot 1.0 │  92.1 │      91.7       94.1       99.3       88.5       91.8       90.9       89.8       92.7       89.9        92.0
+ Medium │    davidalves.micro.DuelistMicro 2.0TC │  81.1 │      82.9       79.3       78.0       76.7       81.6       86.3       80.5       82.1       82.3        81.3
+        │                   gh.GrubbmGrb 1.2.4TC │  75.8 │      71.5       77.7       62.2       77.9       78.6       79.4       79.7       68.1       92.2        70.4
         ├────────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-        │                         Medium Average │  84.1 │      81.9       82.8       85.0       83.9       87.9       85.6       85.0       86.3       81.4        81.3
+        │                         Medium Average │  84.8 │      82.8       87.1       83.9       83.8       84.1       85.6       85.5       84.0       86.7        84.5
 ────────┼────────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-        │                    pe.SandboxDT 1.91TC │  93.4 │      97.4       97.8       93.0       88.6       93.8       90.4       95.3       94.5       86.1        97.1
-        │                 cx.mini.Cigaret 1.31TC │  73.1 │      70.2       68.1       65.3       71.8       77.6       76.0       78.9       73.5       75.1        74.8
-        │                         kc.Fortune 1.0 │  72.8 │      67.9       81.1       69.9       74.9       60.6       75.5       68.1       71.5       82.9        76.0
-   Hard │ simonton.micro.WeeklongObsession 1.5TC │  78.6 │      80.4       73.9       85.8       73.1       79.9       77.5       72.6       86.8       74.6        81.1
-        │            jam.micro.RaikoMicro 1.44TC │  80.5 │      82.8       85.1       82.5       78.9       75.2       80.9       77.7       79.1       84.3        78.2
+        │                    pe.SandboxDT 1.91TC │  88.8 │      83.7       93.6       85.5       88.3       90.1       84.7       91.5       91.3       91.8        87.3
+        │                 cx.mini.Cigaret 1.31TC │  66.9 │      60.8       64.7       65.4       77.9       62.8       69.3       67.1       68.7       71.0        61.5
+        │                         kc.Fortune 1.0 │  81.9 │      86.4       78.7       76.1       85.9       82.1       70.5       85.1       84.1       85.5        84.1
+   Hard │ simonton.micro.WeeklongObsession 1.5TC │  81.2 │      85.9       81.2       74.3       84.1       81.0       83.2       84.2       75.7       87.1        74.7
+        │            jam.micro.RaikoMicro 1.44TC │  77.1 │      85.9       74.4       82.2       83.3       84.1       81.8       65.7       77.7       68.9        67.2
         ├────────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-        │                           Hard Average │  79.7 │      79.7       81.2       79.3       77.5       77.4       80.1       78.5       81.1       80.6        81.4
+        │                           Hard Average │  79.2 │      80.5       78.5       76.7       83.9       80.0       77.9       78.7       79.5       80.9        75.0
 ────────┴────────────────────────────────────────┼───────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-                                         Average │  86.5 │      85.3       86.9       87.0       85.6       87.1       86.4       85.6       88.1       86.5        86.3
+                                         Average │  86.5 │      85.6       87.0       85.8       87.4       86.9       86.7       85.5       86.9       88.0        84.9
 */
     }
 }

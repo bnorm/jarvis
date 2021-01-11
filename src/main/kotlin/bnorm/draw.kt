@@ -4,27 +4,45 @@ import bnorm.parts.gun.CircularPrediction
 import bnorm.parts.gun.DirectPrediction
 import bnorm.parts.gun.GuessFactorPrediction
 import bnorm.parts.gun.LinearPrediction
-import bnorm.parts.gun.virtual.VirtualGun
 import bnorm.parts.gun.buckets
 import bnorm.parts.gun.toGuessFactor
+import bnorm.parts.gun.virtual.VirtualGun
 import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.radius
-import bnorm.parts.tank.TANK_MAX_SPEED
+import bnorm.parts.tank.OrbitMovement
+import bnorm.parts.tank.WallSmoothMovement
+import bnorm.parts.tank.simulate
+import bnorm.robot.Robot
 import bnorm.robot.RobotScan
-import bnorm.robot.RobotSnapshot
+import bnorm.robot.escapeAngle
+import bnorm.robot.snapshot
+import bnorm.robot.snapshot.WallProbe
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.runBlocking
+import robocode.Rules
 import java.awt.Color
 import java.awt.Graphics2D
-import kotlin.math.asin
+import kotlin.math.PI
 
-fun Graphics2D.drawLine(start: Vector, end: Vector) {
+fun Graphics2D.drawLine(start: Vector.Cartesian, end: Vector.Cartesian) {
     drawLine(start.x.toInt(), start.y.toInt(), end.x.toInt(), end.y.toInt())
 }
 
-fun Graphics2D.fillCircle(it: Vector, diameter: Int) {
-    fillOval(it.x.toInt(), it.y.toInt(), diameter, diameter)
+fun Graphics2D.drawLine(start: Vector.Cartesian, direction: Vector.Polar) {
+    drawLine(start, start + direction)
 }
 
-fun Graphics2D.drawWave(self: RobotScan, wave: Wave<WaveData<RobotSnapshot>>, time: Long) {
+fun Graphics2D.fillCircle(location: Vector, diameter: Int) {
+    fillOval((location.x - diameter / 2.0).toInt(), (location.y - diameter / 2.0).toInt(), diameter, diameter)
+}
+
+fun Graphics2D.drawProbe(location: Vector.Cartesian, direction: Vector.Polar, diameter: Int) {
+    drawLine(location, direction)
+    fillCircle(location + direction, diameter)
+}
+
+fun Graphics2D.drawWave(self: RobotScan, wave: Wave, time: Long) {
 //    color = Color.blue
 //    val radius = wave.radius(time)
 //    drawCircle(wave.origin, radius)
@@ -83,23 +101,81 @@ fun Graphics2D.drawBox(center: Vector, side: Double) {
     drawRect((center.x - halfSide).toInt(), (center.y - halfSide).toInt(), side.toInt(), side.toInt())
 }
 
-fun Graphics2D.drawCluster(wave: Wave<WaveData<RobotSnapshot>>, time: Long) {
+fun Graphics2D.drawCluster(wave: Wave, time: Long) {
     val radius = wave.radius(time)
-    val buckets = wave.value.cluster.buckets(31)
+    val buckets = if (wave.context[Jarvis.Companion.RealBullet]) {
+        wave.context[Jarvis.Companion.RealCluster].buckets(31)
+    } else {
+        wave.context[Jarvis.Companion.VirtualCluster].buckets(31)
+    }
 
     val max = buckets.maxOrNull()!!
     val min = buckets.minOrNull()!!
 
     //            println("buckets=${buckets.map { (99 * (it - min) / (max - min)).toInt() }}")
 
-    val heading = theta(wave.origin, wave.value.scan.location)
-    val escapeAngle = asin(TANK_MAX_SPEED / wave.speed)
-    val rotationDirection = wave.value.snapshot.rotateDirection
+    val heading = theta(wave.origin, wave.snapshot.scan.location)
+    val escapeAngle = wave.escapeAngle
+    val rotationDirection = wave.snapshot.rotateDirection
 
     for (i in buckets.indices) {
         val green = (255 * (buckets[i] - min) / (max - min)).toInt()
         color = Color(0, green, 255 - green)
         val gf = i.toGuessFactor(buckets.size)
-        fillCircle(wave.origin + Polar(heading + rotationDirection * gf * escapeAngle, radius), if (wave.value.real) 8 else 3)
+        val bearing = rotationDirection * gf * (if (gf < 0) escapeAngle.reverse else escapeAngle.forward)
+        fillCircle(
+            wave.origin + Polar(heading + bearing, radius),
+            if (wave.context[Jarvis.Companion.RealBullet]) 8 else 3
+        )
+    }
+}
+
+fun Graphics2D.draw(
+    wallProbe: WallProbe
+) {
+    val (north, east, south, west) = wallProbe.position
+    val location = Cartesian(west, south)
+
+    color = Color.white
+    drawProbe(location, Polar(0.0, north), 8)
+    drawProbe(location, Polar(PI / 2, east), 8)
+    drawProbe(location, Polar(PI, south), 8)
+    drawProbe(location, Polar(3 * PI / 2, west), 8)
+
+    color = Color.green
+    drawProbe(location, wallProbe.heading.forward(), 8)
+    drawProbe(location, wallProbe.perpendicular.forward(), 8)
+
+    color = Color.red
+    drawProbe(location, wallProbe.heading.backward(), 8)
+    drawProbe(location, wallProbe.perpendicular.backward(), 8)
+}
+
+fun Graphics2D.drawPath(source: Robot, target: Robot): Unit = runBlocking {
+    val sourceLocation = source.latest.location
+    val speed = Rules.getBulletSpeed(3.0)
+
+    run {
+        color = Color.green
+        val movement = WallSmoothMovement(
+            target.battleField,
+            OrbitMovement(source, 500.0, 1.0 * target.snapshot.moveDirection)
+        )
+        var time = 0
+        target.simulate(movement)
+            .takeWhile { sqr(time++ * speed) <= sourceLocation.r2(it) }
+            .collect { drawCircle(it, 2.0) }
+    }
+
+    run {
+        color = Color.red
+        val movement = WallSmoothMovement(
+            target.battleField,
+            OrbitMovement(source, 500.0, -1.0 * target.snapshot.moveDirection)
+        )
+        var time = 0
+        target.simulate(movement)
+            .takeWhile { sqr(time++ * speed) <= sourceLocation.r2(it) }
+            .collect { drawCircle(it, 2.0) }
     }
 }

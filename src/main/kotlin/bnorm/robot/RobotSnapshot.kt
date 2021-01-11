@@ -5,6 +5,7 @@ import bnorm.parts.tank.TANK_ACCELERATION
 import bnorm.parts.tank.TANK_DECELERATION
 import bnorm.parts.tank.TANK_MAX_SPEED
 import bnorm.r
+import bnorm.robot.snapshot.WallProbe
 import bnorm.sqr
 import bnorm.theta
 import robocode.util.Utils
@@ -20,6 +21,7 @@ data class RobotSnapshot(
     val scan: RobotScan,
     val rotateDirection: Int,
     val moveDirection: Int,
+    val wallProbe: WallProbe,
     val distance: Double,
     val lateralSpeed: Double,
     val advancingSpeed: Double,
@@ -51,9 +53,9 @@ data class RobotSnapshot(
             RobotSnapshot::acceleration,
             RobotSnapshot::distLast10,
             RobotSnapshot::distLast30,
-            RobotSnapshot::distLast90,
-            RobotSnapshot::nTime,
-            RobotSnapshot::nTimeSinceMovement,
+//            RobotSnapshot::distLast90,
+//            RobotSnapshot::nTime,
+//            RobotSnapshot::nTimeSinceMovement,
             RobotSnapshot::nTimeSinceReverse,
             RobotSnapshot::nTimeSinceDeceleration,
 //            RobotSnapshot::nTimeSinceBullet,
@@ -111,6 +113,7 @@ fun RobotSnapshot?.timeSinceBullet(robot: Robot): Long {
 }
 
 fun normalize(value: Long): Double = 1.0 - 1.0 / (1.0 + value)
+fun normalize(value: Double): Double = 1.0 - 1.0 / (1.0 + value)
 fun normalize(min: Double, value: Double, max: Double): Double = (value - min) / (max - min)
 
 fun RobotService.robotSnapshot(
@@ -152,33 +155,27 @@ fun RobotService.robotSnapshot(
     val timeSinceDeceleration = prevSnapshot.timeSinceDeceleration(acceleration)
     val timeSinceBullet = prevSnapshot.timeSinceBullet(self)
 
-    val x = scan.location.x
-    val y = scan.location.y
-    val xInverse = battleField.width - x
-    val yInverse = battleField.height - y
+    val wallProbe = WallProbe(
+        battleField,
+        scan.location,
+        heading + if (moveDirection < 0.0) PI else 0.0,
+        theta + rotateDirection * (PI / 2)
+    )
 
-    val wallDistance = minOf(x, y, xInverse, yInverse)
-    val cornerDistance = sqrt(sqr(minOf(x, xInverse)) + sqr(minOf(y, yInverse)))
+    val west = scan.location.x
+    val south = scan.location.y
+    val east = battleField.width - west
+    val north = battleField.height - south
+
+    val wallDistance = minOf(west, south, east, north)
+    val cornerDistance = sqrt(sqr(minOf(west, east)) + sqr(minOf(south, north)))
     val cornerDirection = sign(if (prevSnapshot != null) cornerDistance - prevSnapshot.cornerDistance else 0.0)
-
-    val headingXWallDistance = (if (heading < PI) xInverse else x) / abs(cos(PI / 2 - heading))
-    val reverseXWallDistance = (if (heading < PI) x else xInverse) / abs(cos(PI / 2 - heading))
-    val headingYWallDistance = (if (heading in PI / 2..PI * 3 / 4) y else yInverse) / abs(cos(heading))
-    val reverseYWallDistance = (if (heading in PI / 2..PI * 3 / 4) yInverse else y) / abs(cos(heading))
-    val forwardWallDistance: Double
-    val backwardWallDistance: Double
-    if (moveDirection < 0) {
-        forwardWallDistance = minOf(reverseXWallDistance, reverseYWallDistance)
-        backwardWallDistance = minOf(headingXWallDistance, headingYWallDistance)
-    } else {
-        forwardWallDistance = minOf(headingXWallDistance, headingYWallDistance)
-        backwardWallDistance = minOf(reverseXWallDistance, reverseYWallDistance)
-    }
 
     return RobotSnapshot(
         scan = scan,
         rotateDirection = rotateDirection,
         moveDirection = moveDirection,
+        wallProbe = wallProbe,
         distance = normalize(0.0, distance, battleField.diagonal),
         lateralSpeed = normalize(0.0, abs(lateralSpeed), TANK_MAX_SPEED),
         advancingSpeed = normalize(-TANK_MAX_SPEED, advancingSpeed, TANK_MAX_SPEED),
@@ -191,8 +188,8 @@ fun RobotService.robotSnapshot(
         timeSinceDeceleration = timeSinceDeceleration,
         timeSinceBullet = timeSinceBullet,
         wallDistance = normalize(0.0, wallDistance, minOf(battleField.width / 2, battleField.height / 2)),
-        forwardWallDistance = normalize(0.0, forwardWallDistance, battleField.diagonal),
-        backwardWallDistance = normalize(0.0, backwardWallDistance, battleField.diagonal),
+        forwardWallDistance = normalize(wallProbe.perpendicular.forward),
+        backwardWallDistance = normalize(wallProbe.perpendicular.backward),
         cornerDistance = cornerDistance,
         cornerDirection = cornerDirection
     )

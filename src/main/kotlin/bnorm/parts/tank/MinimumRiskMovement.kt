@@ -1,9 +1,9 @@
 package bnorm.parts.tank
 
-import bnorm.Cartesian
 import bnorm.Polar
 import bnorm.Vector
 import bnorm.fillCircle
+import bnorm.parts.BattleField
 import bnorm.parts.contains
 import bnorm.r2
 import bnorm.robot.Robot
@@ -18,7 +18,7 @@ import kotlin.math.cos
 import kotlin.math.sqrt
 
 class MinimumRiskMovement(
-    private val tank: Tank,
+    private val battleField: BattleField,
     private val aliveRobots: Collection<Robot>,
 ) : Movement {
     companion object {
@@ -30,7 +30,10 @@ class MinimumRiskMovement(
     var destination: Vector.Cartesian? = null
     var previous: Vector.Cartesian? = null
 
-    fun draw(g: Graphics2D) {
+    fun draw(
+        g: Graphics2D,
+        location: Vector.Cartesian,
+    ) {
         destination?.let {
             g.color = Color.blue
             g.fillCircle(it, 8)
@@ -40,14 +43,13 @@ class MinimumRiskMovement(
             g.fillCircle(it, 8)
         }
 
-        val location = Cartesian(tank.x, tank.y)
         val scans = aliveRobots.map { it.latest }
         val closest = scans.minByOrNull { location.r2(it.location) }
         if (closest != null) {
             var min = Double.MAX_VALUE
             var max = Double.MIN_VALUE
             val points = possibleDestinations(location, closest).map {
-                val risk = risk(it, scans)
+                val risk = risk(location, it, scans)
                 min = minOf(risk, min)
                 max = maxOf(risk, max)
                 risk to it
@@ -60,25 +62,24 @@ class MinimumRiskMovement(
         }
     }
 
-    override fun setMove() {
-        val location = Cartesian(tank.x, tank.y)
+    override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
         val scans = aliveRobots.map { it.latest }
         val closest = scans.minByOrNull { location.r2(it.location) }
 
         if (closest != null) {
             var destination = this.destination
-            val possible = possibleDestinations(location, closest).minByOrNull { risk(it, scans) }!!
+            val possible = possibleDestinations(location, closest).minByOrNull { risk(location, it, scans) }!!
             if (destination == null
-                || r2(tank.x, tank.y, destination) < sqr(TANK_SIZE / 2)
-                || risk(destination, scans) * 0.8 > risk(possible, scans)
+                || location.r2(destination) < sqr(TANK_SIZE / 2)
+                || risk(location, destination, scans) * 0.8 > risk(location, possible, scans)
             ) {
                 destination = possible
             }
-            tank.moveTo(destination)
-            if (this.destination != destination) {
-                this.previous = location
-                this.destination = destination
-            }
+            if (this.destination != destination) this.previous = location
+            this.destination = destination
+            return moveTo(location, velocity, destination)
+        } else {
+            return Polar(0.0, 0.0)
         }
     }
 
@@ -96,13 +97,13 @@ class MinimumRiskMovement(
             }
         }
     }
-        .filter { tank.battleField.contains(it, 2 * TANK_SIZE / 3) }
+        .filter { battleField.contains(it, 2 * TANK_SIZE / 3) }
 
-    private fun risk(destination: Vector, enemies: List<RobotScan>): Double {
+    private fun risk(location: Vector.Cartesian, destination: Vector, enemies: List<RobotScan>): Double {
         var risk = 0.0
-        val battleFieldWidth = tank.battleField.width
-        val battleFieldHeight = tank.battleField.height
-        val heading = theta(tank.x, tank.y, destination.x, destination.y)
+        val battleFieldWidth = battleField.width
+        val battleFieldHeight = battleField.height
+        val heading = theta(location.x, location.y, destination.x, destination.y)
 
         val enemyRisk = enemies.size - 1
 
@@ -132,7 +133,7 @@ class MinimumRiskMovement(
 
         for (enemy in enemies) {
             var botRisk = enemy.energy
-            botRisk *= 0.5 + abs(cos(theta(tank.x, tank.y, enemy.location) - heading))
+            botRisk *= 0.5 + abs(cos(theta(location.x, location.y, enemy.location) - heading))
             botRisk /= destination.r2(enemy.location)
             risk += botRisk
         }

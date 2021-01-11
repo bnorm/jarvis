@@ -2,7 +2,8 @@ package bnorm.parts.gun
 
 import bnorm.Polar
 import bnorm.Vector
-import bnorm.WaveData
+import bnorm.kdtree.KdTree
+import bnorm.parts.gun.virtual.escapeAngle
 import bnorm.robot.Robot
 import bnorm.robot.RobotSnapshots
 import bnorm.sqr
@@ -11,17 +12,17 @@ import robocode.Rules
 
 class AntiGuessFactorPrediction<T : GuessFactorSnapshot>(
     private val self: Robot,
-    private val positive: GuessFactorPrediction<T>,
-    private val negative: GuessFactorPrediction<T>,
+    private val positiveFunction: (Robot) -> Collection<KdTree.Neighbor<T>>,
+    private val negativeFunction: (Robot) -> Collection<KdTree.Neighbor<T>>,
 ) : Prediction {
-    override fun predict(robot: Robot, bulletPower: Double): Vector {
-        val escapeAngle = escapeAngle(Rules.getBulletSpeed(bulletPower))
+    override suspend fun predict(robot: Robot, bulletPower: Double): Vector {
+        val escapeAngle = escapeAngle(self, robot, Rules.getBulletSpeed(bulletPower))
 //        val distance = r(gun.x, gun.y, robot.latest.location)
 //        val robotAngle = robotAngle(distance)
 
         val heading = theta(self.latest.location, robot.latest.location)
         val rotationDirection = robot.context[RobotSnapshots].latest.rotateDirection // TODO
-        val buckets = buckets(positive.latestWave.cluster, negative.latestWave.cluster, 61)
+        val buckets = buckets(positiveFunction(robot), negativeFunction(robot), 61)
 
         // TODO instead of buckets, use robotAngle to find the angle which the most number of angles match
 
@@ -36,13 +37,14 @@ class AntiGuessFactorPrediction<T : GuessFactorSnapshot>(
         }
 
         val gf = index.toGuessFactor(buckets.size)
-        return Polar(heading + rotationDirection * gf * escapeAngle, 1.0)
+        val bearing = rotationDirection * gf * if (gf < 0) escapeAngle.reverse else escapeAngle.forward
+        return Polar(heading + bearing, 1.0)
     }
 }
 
 fun buckets(
-    positive: Iterable<WaveData.Node<GuessFactorSnapshot>>,
-    negative: Iterable<WaveData.Node<GuessFactorSnapshot>>,
+    positive: Iterable<KdTree.Neighbor<GuessFactorSnapshot>>,
+    negative: Iterable<KdTree.Neighbor<GuessFactorSnapshot>>,
     bucketCount: Int,
     width: Int = 3
 ): DoubleArray {

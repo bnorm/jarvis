@@ -9,7 +9,7 @@ import robocode.Rules
 class LinearPrediction(
     private val self: Robot
 ) : Prediction {
-    override fun predict(robot: Robot, bulletPower: Double): Vector {
+    override suspend fun predict(robot: Robot, bulletPower: Double): Vector {
         val enemyLocations = self.generateSequence(robot) { _, curr ->
             curr.copy(
                 location = curr.location + curr.velocity,

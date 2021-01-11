@@ -15,6 +15,7 @@ repositories {
 
 dependencies {
     implementation("com.jakewharton.picnic:picnic:0.5.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.1")
 
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
@@ -66,18 +67,20 @@ jmh {
  * Gradle source set, configurations, and tasks for running battles.
  */
 
-val battles by sourceSets.registering {
-    compileClasspath += sourceSets.main.get().output + sourceSets.test.get().output
-    runtimeClasspath += sourceSets.main.get().output + sourceSets.test.get().output
-}
-
+val battles by sourceSets.registering
 val battlesImplementation by configurations.getting {
-    extendsFrom(configurations.testImplementation.get())
+    extendsFrom(configurations.robocode.get())
 }
 
 val battlesRuntimeOnly by configurations.getting {
-    extendsFrom(configurations.testRuntimeOnly.get())
     extendsFrom(configurations.robocodeRuntime.get())
+}
+
+dependencies {
+    battlesImplementation("com.jakewharton.picnic:picnic:0.5.0")
+    battlesImplementation(kotlin("test-junit5"))
+    battlesImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
+    battlesRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")
 }
 
 // TODO Should there be a different task for each different battle?
@@ -91,4 +94,7 @@ val runBattles by project.tasks.registering(Test::class) {
     useJUnitPlatform()
     testClassesDirs = battles.get().output.classesDirs
     classpath = battles.get().runtimeClasspath
+
+    enableAssertions = false
+    debug = false
 }

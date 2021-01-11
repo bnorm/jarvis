@@ -18,6 +18,7 @@ class VirtualGun(
 ) {
     companion object {
         private val TANK_HIT_RADIUS = sqrt(2.0) * TANK_SIZE / 2
+        private const val ROLLING = 250
     }
 
     class VirtualBullet(
@@ -51,18 +52,18 @@ class VirtualGun(
     private fun increment(hit: Boolean) {
         if (hit) this.hit++
         fired++
-        if (fired > 2000) {
-            // Rolling average over the last 2000
-            success = (1999 * success + if (hit) 1 else 0) / 2000
-        } else {
+//        if (fired > ROLLING) {
+//            // Rolling average over the last 2000
+//            success = ((ROLLING - 1) * success + if (hit) 1 else 0) / ROLLING
+//        } else {
             success = this.hit.toDouble() / fired
-        }
+//        }
     }
 
-    fun fire(power: Double): Vector {
+    suspend fun fire(power: Double): Vector {
         val speed = Rules.getBulletSpeed(power)
         val velocity = Polar(prediction.predict(target, power).theta, speed)
-        _bullets.addLast(VirtualBullet(source.latest.time + 1, source.latest.location, velocity, speed))
+        _bullets.addLast(VirtualBullet(source.latest.time, source.latest.location, velocity, speed))
         return velocity
     }
 

@@ -1,5 +1,6 @@
 package bnorm.parts.tank
 
+import bnorm.Polar
 import bnorm.Vector
 import bnorm.parts.RobotPart
 import bnorm.r
@@ -37,6 +38,22 @@ fun Tank.moveTo(destination: Vector) {
 
     setTurn(bearing)
     setAhead(distance)
+}
+
+fun moveTo(location: Vector.Cartesian, velocity: Vector.Polar, destination: Vector): Vector.Polar {
+    var bearing = Utils.normalRelativeAngle(location.theta(destination) - velocity.theta)
+    var distance = location.r(destination)
+
+    // Is it better to go backwards?
+    if (bearing > PI / 2) {
+        bearing -= PI
+        distance = -distance
+    } else if (bearing < -PI / 2) {
+        bearing += PI
+        distance = -distance
+    }
+
+    return Polar(bearing, distance)
 }
 
 fun Tank(robot: AdvancedRobot): Tank {

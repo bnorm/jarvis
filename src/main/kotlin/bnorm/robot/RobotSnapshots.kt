@@ -1,5 +1,8 @@
 package bnorm.robot
 
+import bnorm.parts.gun.virtual.Wave
+import bnorm.parts.gun.virtual.WaveContext
+
 class RobotSnapshots(
     var latest: RobotSnapshot
 ) {
@@ -11,8 +14,8 @@ class RobotSnapshots(
         lateinit var factory: Factory
     }
 
-    companion object : RobotContext.Feature<Configuration, RobotSnapshots> {
-        override fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): RobotSnapshots {
+    companion object : RobotContext.Feature<Configuration, RobotSnapshots>, WaveContext.Feature<RobotSnapshot> {
+        override suspend fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): RobotSnapshots {
             val configuration = Configuration().apply(block)
             val factory = configuration.factory
             val snapshots = RobotSnapshots(factory.create(robot.latest, null))
@@ -30,3 +33,6 @@ class RobotSnapshots(
         }
     }
 }
+
+val Robot.snapshot: RobotSnapshot get() = context[RobotSnapshots].latest
+val Wave.snapshot: RobotSnapshot get() = context[RobotSnapshots]

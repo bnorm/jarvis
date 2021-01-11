@@ -21,11 +21,11 @@ class KdTree<T>(
     }
 
     private class TreePoint<out T>(
-        override val value: T,
+        val value: T,
         val dimensions: DoubleArray,
-        override var dist: Double = 0.0
-    ) : Neighbor<T> {
-        override fun compareTo(other: Neighbor<*>): Int = compareValues(dist, other.dist)
+        var dist: Double = 0.0
+    ) : Comparable<TreePoint<*>> {
+        override fun compareTo(other: TreePoint<*>): Int = compareValues(dist, other.dist)
     }
 
     private sealed class Node<T> {
@@ -117,10 +117,14 @@ class KdTree<T>(
         root = root.add(neighbor)
     }
 
-    interface Neighbor<out T> : Comparable<Neighbor<*>> {
-        val value: T
-        val dist: Double
+    data class Neighbor<out T>(
+        val value: T,
+        val dist: Double,
+    ) : Comparable<Neighbor<*>> {
+        override fun compareTo(other: Neighbor<*>): Int = compareValues(dist, other.dist)
     }
+
+    private fun TreePoint<T>.toNeighbor(): Neighbor<T> = Neighbor(value, dist)
 
     fun neighbors(point: T, size: Int): Collection<Neighbor<T>> {
         val pointDimensions = dimensionsFunction(point)
@@ -155,7 +159,7 @@ class KdTree<T>(
             }
         }
 
-        return heap
+        return heap.map { it.toNeighbor() }
     }
 
     fun neighbors(point: T): Sequence<Neighbor<T>> = sequence {
@@ -203,7 +207,7 @@ class KdTree<T>(
 
             var best: TreePoint<T>? = queue.peek()
             while (best != null && other.dist > best.dist) {
-                yield(queue.remove())
+                yield(queue.remove().toNeighbor())
                 best = queue.peek()
             }
 
@@ -211,7 +215,7 @@ class KdTree<T>(
         }
 
         while (queue.isNotEmpty()) {
-            yield(queue.poll())
+            yield(queue.poll().toNeighbor())
         }
     }
 

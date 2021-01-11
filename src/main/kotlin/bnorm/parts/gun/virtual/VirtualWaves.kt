@@ -8,22 +8,25 @@ import bnorm.sqr
 import robocode.Rules
 import java.util.*
 
-class VirtualWaves<T>(
+typealias WaveListener = suspend (wave: Wave) -> Unit
+
+class VirtualWaves(
     private val source: Robot,
     private val target: Robot,
-    private val listeners: List<Wave.Listener<T>>,
+    private val onWave: suspend Wave.() -> Unit,
+    private val listeners: List<WaveListener>,
 ) {
-    private val _waves = LinkedList<Wave<T>>()
-    val waves: List<Wave<T>> get() = _waves
+    private val _waves = LinkedList<Wave>()
+    val waves: List<Wave> get() = _waves
 
     init {
         target.onScan { scan ->
-            _waves.removeIf { wave ->
+            val iter = _waves.iterator()
+            while (iter.hasNext()) {
+                val wave = iter.next()
                 if (wave.origin.r2(scan.location) <= sqr(wave.radius(scan.time))) {
-                    listeners.forEach { it.onWave(wave) }
-                    true
-                } else {
-                    false
+                    listeners.forEach { it.invoke(wave) }
+                    iter.remove()
                 }
             }
         }
@@ -32,32 +35,38 @@ class VirtualWaves<T>(
         }
     }
 
-    class Configuration<T> {
-        val listeners = mutableListOf<Wave.Listener<T>>()
+    class Configuration {
+        var onWave: (suspend Wave.() -> Unit)? = null
 
-        fun listen(listener: Wave.Listener<T>) {
+        val listeners = mutableListOf<WaveListener>()
+
+        fun listen(listener: WaveListener) {
             listeners.add(listener)
         }
     }
 
-    abstract class Feature<T> : RobotContext.Feature<Configuration<T>, VirtualWaves<T>> {
-        override fun RobotService.install(robot: Robot, block: Configuration<T>.() -> Unit): VirtualWaves<T> {
-            val configuration = Configuration<T>().apply(block)
-            return VirtualWaves(self, robot, configuration.listeners)
+    companion object Feature : RobotContext.Feature<Configuration, VirtualWaves> {
+        override suspend fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): VirtualWaves {
+            val configuration = Configuration().apply(block)
+            return VirtualWaves(self, robot, configuration.onWave ?: {}, configuration.listeners)
         }
     }
 
-    fun fire(power: Double, data: T) {
-        if (power <= 0.0) return
+    suspend fun fire(power: Double, block: suspend Wave.() -> Unit): Wave? {
+        if (power <= 0.0) return null
 
         val selfLatest = source.latest
         val wave = Wave(
             origin = selfLatest.location,
             speed = Rules.getBulletSpeed(power),
             time = selfLatest.time,
-            value = data
+            context = WaveContext()
         )
-
+        wave.block()
+        wave.onWave()
         _waves.add(wave)
+        return wave
     }
 }
+
+val Robot.waves get() = context[VirtualWaves]

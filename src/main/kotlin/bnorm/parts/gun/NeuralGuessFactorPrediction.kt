@@ -2,11 +2,11 @@ package bnorm.parts.gun
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.kdtree.KdTree
 import bnorm.neural.NeuralNetwork
-import bnorm.neural.printLayers
+import bnorm.parts.gun.virtual.escapeAngle
 import bnorm.robot.Robot
-import bnorm.robot.RobotSnapshots
-import bnorm.roundDecimals
+import bnorm.robot.snapshot
 import bnorm.theta
 import robocode.Rules
 import kotlin.time.measureTime
@@ -14,23 +14,23 @@ import kotlin.time.measureTime
 class NeuralGuessFactorPrediction<T : GuessFactorSnapshot>(
     private val self: Robot,
     private val neuralNetwork: NeuralNetwork,
-    private val prediction: GuessFactorPrediction<T>,
+    private val clusterFunction: (Robot) -> Pair<T, Collection<KdTree.Neighbor<T>>>,
     private val dimensionsFunction: (T) -> DoubleArray,
 ) : Prediction {
-    override fun predict(robot: Robot, bulletPower: Double): Vector {
-        val escapeAngle = escapeAngle(Rules.getBulletSpeed(bulletPower))
+    override suspend fun predict(robot: Robot, bulletPower: Double): Vector {
+        val escapeAngle = escapeAngle(self, robot, Rules.getBulletSpeed(bulletPower))
 //        val distance = r(gun.x, gun.y, robot.latest.location)
 //        val robotAngle = robotAngle(distance)
 
         val heading = theta(self.latest.location, robot.latest.location)
-        val rotationDirection = robot.context[RobotSnapshots].latest.rotateDirection // TODO
+        val rotationDirection = robot.snapshot.rotateDirection
 
 //        neuralNetwork.printLayers()
         val buckets: DoubleArray
         println("prediction " + measureTime {
-            buckets = buckets()
+            buckets = buckets(robot)
         })
-        println(buckets.toList())
+//        println(buckets.toList())
 
         var max = 0.0
         var index = (buckets.size - 1) / 2
@@ -43,16 +43,17 @@ class NeuralGuessFactorPrediction<T : GuessFactorSnapshot>(
         }
 
         val gf = index.toGuessFactor(buckets.size)
-        return Polar(heading + rotationDirection * gf * escapeAngle, 1.0)
+        val bearing = rotationDirection * gf * if (gf < 0) escapeAngle.reverse else escapeAngle.forward
+        return Polar(heading + bearing, 1.0)
     }
 
-    private fun buckets(): DoubleArray {
-        val actual = prediction.latestWave.snapshot
+    private fun buckets(robot: Robot): DoubleArray {
+        val (actual, cluster) = clusterFunction(robot)
         val actualValues = dimensionsFunction(actual)
         require(neuralNetwork.input.size == actualValues.size * 2 + 1)
 
         val output = DoubleArray(neuralNetwork.output.size)
-        for (neighbor in prediction.latestWave.cluster) {
+        for (neighbor in cluster) {
             forward(actualValues, neighbor.value, dimensionsFunction(neighbor.value))
 
             for (i in output.indices) {
