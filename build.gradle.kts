@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.4.21"
     kotlin("kapt") version "1.4.21"
-    id("com.bnorm.robocode")
+    id("com.bnorm.robocode") version "0.1.0"
     id("me.champeau.gradle.jmh") version "0.5.2"
 }
 

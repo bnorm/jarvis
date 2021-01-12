@@ -6,7 +6,6 @@ import bnorm.kdtree.KdTree
 import bnorm.parts.gun.virtual.escapeAngle
 import bnorm.robot.Robot
 import bnorm.robot.RobotSnapshots
-import bnorm.sqr
 import bnorm.theta
 import robocode.Rules
 
@@ -45,38 +44,19 @@ class AntiGuessFactorPrediction<T : GuessFactorSnapshot>(
 fun buckets(
     positive: Iterable<KdTree.Neighbor<GuessFactorSnapshot>>,
     negative: Iterable<KdTree.Neighbor<GuessFactorSnapshot>>,
-    bucketCount: Int,
-    width: Int = 3
+    bucketCount: Int
 ): DoubleArray {
-    val sum = DoubleArray(bucketCount)
+    val buckets = DoubleArray(bucketCount)
 
-    positive.forEach {
-        val bucket = it.value.guessFactor.toBucket(bucketCount)
-        sum[bucket] += sqr(width + 1.0) / (1 + it.dist)
-
-        for (i in 1..width) {
-            if (bucket + i < bucketCount) {
-                sum[bucket + i] += sqr(width + 1.0 - i) / (1 + it.dist)
-            }
-            if (bucket - i >= 0) {
-                sum[bucket - i] += sqr(width + 1.0 - i) / (1 + it.dist)
-            }
+    for (b in buckets.indices) {
+        val gf = b.toGuessFactor(bucketCount)
+        for (point in positive) {
+            buckets[b] += gauss(1.0 / point.dist, point.value.guessFactor, 0.1, gf)
+        }
+        for (point in negative) {
+            buckets[b] += gauss(10.0 / point.dist, point.value.guessFactor, 0.3, gf)
+            buckets[b] -= gauss(10.0 / point.dist, point.value.guessFactor, 0.1, gf)
         }
     }
-
-    negative.forEach {
-        val bucket = it.value.guessFactor.toBucket(bucketCount)
-        sum[bucket] -= 2 * sqr(width + 1.0) / (1 + it.dist)
-
-        for (i in 1..width) {
-            if (bucket + i < bucketCount) {
-                sum[bucket + i] -= 2 * sqr(width + 1.0 - i) / (1 + it.dist)
-            }
-            if (bucket - i >= 0) {
-                sum[bucket - i] -= 2 * sqr(width + 1.0 - i) / (1 + it.dist)
-            }
-        }
-    }
-
-    return sum
+    return buckets
 }

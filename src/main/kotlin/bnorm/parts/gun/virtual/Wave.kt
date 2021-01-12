@@ -6,6 +6,7 @@ import bnorm.parts.tank.OrbitMovement
 import bnorm.parts.tank.TANK_MAX_SPEED
 import bnorm.parts.tank.WallSmoothMovement
 import bnorm.parts.tank.simulate
+import bnorm.r
 import bnorm.r2
 import bnorm.robot.EscapeAngle
 import bnorm.robot.Robot
@@ -35,28 +36,29 @@ fun Wave.escapeAngle(speed: Double): Double {
 }
 
 suspend fun escapeAngle(self: Robot, robot: Robot, speed: Double): EscapeAngle {
-    val escapeAngle = asin(TANK_MAX_SPEED / speed)
-    return EscapeAngle(escapeAngle, escapeAngle)
+//    val escapeAngle = asin(TANK_MAX_SPEED / speed)
+//    return EscapeAngle(escapeAngle, escapeAngle)
 
-//    return coroutineScope {
-//        val targetLocation = robot.latest.location
-//        val sourceLocation = self.latest.location
-//        val theta = sourceLocation.theta(targetLocation)
-//
-//        val forward = async {
-//            val movement =
-//                WallSmoothMovement(robot.battleField, OrbitMovement(self, 500.0, 1.0 * robot.snapshot.moveDirection))
-//            abs(Utils.normalRelativeAngle(robot.theta(movement, sourceLocation, speed) - theta))
-//        }
-//
-//        val reverse = async {
-//            val movement =
-//                WallSmoothMovement(robot.battleField, OrbitMovement(self, 500.0, -1.0 * robot.snapshot.moveDirection))
-//            abs(Utils.normalRelativeAngle(robot.theta(movement, sourceLocation, speed) - theta))
-//        }
-//
-//        EscapeAngle(forward.await(), reverse.await())
-//    }
+    return coroutineScope {
+        val targetLocation = robot.latest.location
+        val sourceLocation = self.latest.location
+        val theta = sourceLocation.theta(targetLocation)
+        val distance = sourceLocation.r(targetLocation).coerceAtLeast(500.0)
+
+        val forward = async {
+            val movement =
+                WallSmoothMovement(robot.battleField, OrbitMovement(self, distance, 1.0 * robot.snapshot.moveDirection))
+            abs(Utils.normalRelativeAngle(robot.theta(movement, sourceLocation, speed) - theta))
+        }
+
+        val reverse = async {
+            val movement =
+                WallSmoothMovement(robot.battleField, OrbitMovement(self, distance, -1.0 * robot.snapshot.moveDirection))
+            abs(Utils.normalRelativeAngle(robot.theta(movement, sourceLocation, speed) - theta))
+        }
+
+        EscapeAngle(forward.await(), reverse.await())
+    }
 }
 
 private suspend fun Robot.theta(

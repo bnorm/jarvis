@@ -54,7 +54,7 @@ data class RobotSnapshot(
             RobotSnapshot::distLast10,
             RobotSnapshot::distLast30,
 //            RobotSnapshot::distLast90,
-//            RobotSnapshot::nTime,
+            RobotSnapshot::nTime,
 //            RobotSnapshot::nTimeSinceMovement,
             RobotSnapshot::nTimeSinceReverse,
             RobotSnapshot::nTimeSinceDeceleration,

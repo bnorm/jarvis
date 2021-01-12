@@ -4,7 +4,6 @@ import bnorm.Polar
 import bnorm.Vector
 import bnorm.kdtree.KdTree
 import bnorm.parts.gun.virtual.escapeAngle
-import bnorm.parts.tank.TANK_MAX_SPEED
 import bnorm.parts.tank.TANK_SIZE
 import bnorm.robot.Robot
 import bnorm.robot.snapshot
@@ -12,6 +11,7 @@ import bnorm.sqr
 import bnorm.theta
 import robocode.Rules
 import kotlin.math.asin
+import kotlin.math.exp
 import kotlin.math.roundToInt
 
 interface GuessFactorSnapshot {
@@ -62,22 +62,22 @@ fun robotAngle(distance: Double): Double {
     return asin(TANK_SIZE / distance)
 }
 
-fun Iterable<KdTree.Neighbor<GuessFactorSnapshot>>.buckets(bucketCount: Int, width: Int = 3): DoubleArray {
-    val sum = DoubleArray(bucketCount)
+fun Iterable<KdTree.Neighbor<GuessFactorSnapshot>>.buckets(bucketCount: Int): DoubleArray {
+    val buckets = DoubleArray(bucketCount)
 
-    for (point in this) {
-        val bucket = point.value.guessFactor.toBucket(bucketCount)
-        sum[bucket] += sqr(width + 1.0)// / (1 + point.dist)
-
-        for (i in 1..width) {
-            if (bucket + i < bucketCount) {
-                sum[bucket + i] += sqr(width + 1.0 - i)// / (1 + point.dist)
-            }
-            if (bucket - i >= 0) {
-                sum[bucket - i] += sqr(width + 1.0 - i)// / (1 + point.dist)
-            }
+    for (b in buckets.indices) {
+        val gf = b.toGuessFactor(bucketCount)
+        for (point in this) {
+            buckets[b] += gauss(1.0 / point.dist, point.value.guessFactor, 0.1, gf)
         }
     }
 
-    return sum
+    return buckets
 }
+
+fun gauss(
+    a: Double, // Height
+    b: Double, // Center
+    c: Double, // Standard Deviation
+    x: Double
+) = a * exp(-sqr(b - x) / (2.0 * sqr(c)))

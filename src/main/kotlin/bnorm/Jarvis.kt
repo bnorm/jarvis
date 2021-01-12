@@ -21,9 +21,6 @@ import bnorm.parts.radar.AdaptiveScan
 import bnorm.parts.radar.Radar
 import bnorm.parts.tank.MinimumRiskMovement
 import bnorm.parts.tank.Movement
-import bnorm.parts.tank.OrbitMovement
-import bnorm.parts.tank.WallSmoothMovement
-import bnorm.parts.tank.simulate
 import bnorm.robot.*
 import com.jakewharton.picnic.BorderStyle
 import com.jakewharton.picnic.RowDsl
@@ -31,7 +28,6 @@ import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.table
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -87,9 +83,7 @@ open class Jarvis @JvmOverloads constructor(
                 realTree.neighbors(robot.snapshot, 100)
             }
 
-            val virtualGf = GuessFactorPrediction(self) { virtualCluster }
-            val realGf = GuessFactorPrediction(self) { realCluster }
-//            val neuralGf =
+            //            val neuralGf =
 //                NeuralGuessFactorPrediction(self, neuralNetwork, virtualGf, RobotSnapshot::guessFactorDimensions)
 
             robot.install(RobotSnapshots) {
@@ -103,9 +97,9 @@ open class Jarvis @JvmOverloads constructor(
                     DirectPrediction(self),
                     LinearPrediction(self),
                     CircularPrediction(self),
-                    virtualGf,
-                    realGf,
-                    // AntiGuessFactorPrediction(self, virtualGf, realGf),
+                    GuessFactorPrediction(self) { virtualCluster },
+                    GuessFactorPrediction(self) { realCluster },
+                    // AntiGuessFactorPrediction(self, { virtualCluster }, { realCluster }),
                     // neuralGf,
                 )
             }
