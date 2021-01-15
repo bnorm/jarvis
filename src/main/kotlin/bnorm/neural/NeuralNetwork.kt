@@ -1,71 +1,6 @@
 package bnorm.neural
 
-import bnorm.sqr
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.exp
-import kotlin.math.ln
-import kotlin.math.sign
-import kotlin.math.sin
-import kotlin.math.tanh
 import kotlin.random.Random
-
-interface Activation {
-    operator fun invoke(v: Double): Double
-    fun derivative(v: Double): Double
-
-    abstract class ConstantDerivative(
-        val derivative: Double
-    ) : Activation {
-        final override fun derivative(v: Double): Double = derivative
-    }
-
-    companion object {
-        val Linear = object : ConstantDerivative(1.0) {
-            override fun invoke(v: Double): Double = v
-        }
-
-        val Sigmoid = object : Activation {
-            override fun invoke(v: Double): Double = 1.0 / (1.0 + exp(-v))
-            override fun derivative(v: Double): Double {
-                val value = invoke(v)
-                return (value * (1 - value)).coerceAtLeast(2.2204460492503126E-16)
-            }
-        }
-
-        val Gaussian = object : Activation {
-            override fun invoke(v: Double): Double = exp(-sqr(v))
-            override fun derivative(v: Double): Double {
-                val derivative = -2 * v * invoke(v)
-                val nonZeroPositiveDerivative = abs(derivative).coerceAtLeast(1.354304923E-315)
-                return nonZeroPositiveDerivative * sign(derivative)
-            }
-        }
-
-        val Sine = object : Activation {
-            override fun invoke(v: Double): Double = sin(v)
-            override fun derivative(v: Double): Double = cos(v)
-        }
-
-        val Tanh = object : Activation {
-            override fun invoke(v: Double): Double = tanh(v)
-            override fun derivative(v: Double): Double = (1 - sqr(invoke(v))).coerceAtLeast(2.220446049250313E-16)
-        }
-
-        val SmoothMax = object : Activation {
-            override fun invoke(v: Double): Double = ln(1 + exp(v))
-            override fun derivative(v: Double): Double {
-                val e = exp(v)
-                return e / (e + 1)
-            }
-        }
-
-        val ReLU = object : Activation {
-            override fun invoke(v: Double): Double = 0.0.coerceAtLeast(v)
-            override fun derivative(v: Double): Double = if (v <= 0.0) 0.0 else v
-        }
-    }
-}
 
 class NeuralNetwork(
     vararg layers: Int,
@@ -89,13 +24,14 @@ class NeuralNetwork(
         val columns = inputs + if (biased) 1 else 0
         val weights = DoubleArray(outputs * columns) { i -> initWeight(i, i) }
         val output = DoubleArray(outputs)
-        val h = DoubleArray(outputs)
+        val error = DoubleArray(outputs)
     }
 
     val input = DoubleArray(layers.first())
     val layers = layers.toList().windowed(2)
         .map { (inputs, outputs) -> Layer(inputs, outputs, biased, initWeight) }
     val output = this.layers.last().output
+    val error = this.layers.last().error
 
     // Feed the *already configured input* through the neural network
     fun forward() {
@@ -118,38 +54,48 @@ class NeuralNetwork(
     }
 
     // propagate the error through the neural network
-    // NOTE: the output array is assumed to be configured to be the error
+    // NOTE: it is assumed the network has already been run forward
+    // NOTE: the error array is assumed to be configured to be the error
     fun train(alpha: Double) {
         for (l in layers.lastIndex downTo 0) {
             val input = if (l == 0) input else layers[l - 1].output
-            layers[l].train(alpha, input)
+            val inputError = if (l == 0) input else layers[l - 1].error
+            layers[l].train(alpha, input, inputError)
         }
     }
 
-    private fun Layer.train(alpha: Double, input: DoubleArray) {
+    private fun Layer.train(alpha: Double, input: DoubleArray, inputError: DoubleArray) {
         for (o in 0 until outputs) {
-            var delta = 0.0
-            if (biased) delta += weights[o * columns + inputs] * 1.0
-            for (i in 0 until inputs) {
-                delta += weights[o * columns + i] * input[i]
-            }
-            h[o] = activation.derivative(delta)
+            output[o] = alpha * derivative(o, input) * error[o]
         }
 
         if (biased) {
             for (o in 0 until outputs) {
-                weights[o * columns + inputs] = weights[o * columns + inputs] + alpha * output[o] * h[0]
+                weights[o * columns + inputs] = weights[o * columns + inputs] + output[o]
             }
         }
 
         for (i in 0 until inputs) {
-            var error = 0.0
+            var sum = 0.0
             for (o in 0 until outputs) {
                 val w = weights[o * columns + i]
-                error += w * output[o]
-                weights[o * columns + i] = w + alpha * input[i] * output[o] * h[o]
+                sum += w * error[o]
+                weights[o * columns + i] = w + input[i] * output[o]
             }
-            input[i] = error
+            inputError[i] = sum
         }
+    }
+
+    private fun Layer.derivative(outputNode: Int, input: DoubleArray): Double {
+        if (activation is Activation.OutputActivation) {
+            return activation.outputDerivative(output[outputNode])
+        }
+
+        var delta = 0.0
+        if (biased) delta += weights[outputNode * columns + inputs] * 1.0
+        for (i in 0 until inputs) {
+            delta += weights[outputNode * columns + i] * input[i]
+        }
+        return activation.derivative(delta)
     }
 }

@@ -30,7 +30,7 @@ class NeuralNetworkTest {
 
     private fun NeuralNetwork.train(vararg values: Double, expected: Double): Double {
         val actual = run(*values)
-        output[0] = expected - actual
+        error[0] = expected - actual
         train(0.5)
         return actual
     }
@@ -66,7 +66,7 @@ class NeuralNetworkTest {
     }
 
     @Test
-    fun `xor neural network`() = with(NeuralNetwork(2, 4, 1, biased = true)) {
+    fun `xor neural network`() = with(NeuralNetwork(2, 8, 1, biased = true)) {
         repeat(1000) {
             train(0.0, 0.0, expected = 0.0)
             train(1.0, 0.0, expected = 1.0)
@@ -121,7 +121,7 @@ class NeuralNetworkTest {
         fun trainM(value: Double, expected: DoubleArray): DoubleArray {
             val actual = runM(value)
             for (i in expected.indices) {
-                output[i] = expected[i] - actual[i]
+                error[i] = expected[i] - actual[i]
             }
             train(0.5)
             return actual

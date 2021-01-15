@@ -74,9 +74,9 @@ class NeuralGuessFactorPrediction<T : GuessFactorSnapshot>(
 
             for (i in neuralNetwork.output.indices) {
                 if (i == bucket) {
-                    neuralNetwork.output[i] = 1.0 - neuralNetwork.output[i]
+                    neuralNetwork.error[i] = 1.0 - neuralNetwork.output[i]
                 } else {
-                    neuralNetwork.output[i] = 0.0 - neuralNetwork.output[i]
+                    neuralNetwork.error[i] = 0.0 - neuralNetwork.output[i]
                 }
             }
 
