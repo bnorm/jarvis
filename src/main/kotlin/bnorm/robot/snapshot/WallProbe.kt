@@ -2,23 +2,33 @@ package bnorm.robot.snapshot
 
 import bnorm.Vector
 import bnorm.parts.BattleField
+import bnorm.sqr
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import robocode.util.Utils
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.sqrt
 
+@Serializable
 data class WallProbe(
     val position: Position,
     val heading: Movement,
     val perpendicular: Movement,
 ) {
+    @Serializable
     data class Position(
         val north: Double,
         val east: Double,
         val south: Double,
         val west: Double,
-    )
+    ) {
+        @Transient
+        val diagonal = sqrt(sqr(north + south) + sqr(east + west))
+    }
 
+    @Serializable
     data class Movement(
         val heading: Double,
         val forward: Double,

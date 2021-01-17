@@ -1,5 +1,7 @@
 package bnorm
 
+import bnorm.geo.Circle
+import bnorm.geo.Rectangle
 import bnorm.parts.gun.CircularPrediction
 import bnorm.parts.gun.DirectPrediction
 import bnorm.parts.gun.GuessFactorPrediction
@@ -11,10 +13,10 @@ import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.radius
 import bnorm.parts.tank.OrbitMovement
 import bnorm.parts.tank.WallSmoothMovement
+import bnorm.parts.tank.escape.escapeAngle
 import bnorm.parts.tank.simulate
 import bnorm.robot.Robot
 import bnorm.robot.RobotScan
-import bnorm.robot.escapeAngle
 import bnorm.robot.snapshot
 import bnorm.robot.snapshot.WallProbe
 import kotlinx.coroutines.flow.collect
@@ -24,6 +26,19 @@ import robocode.Rules
 import java.awt.Color
 import java.awt.Graphics2D
 import kotlin.math.PI
+
+fun Graphics2D.draw(circle: Circle) {
+    drawCircle(circle.center, circle.radius)
+}
+
+fun Graphics2D.draw(rectangle: Rectangle) {
+    drawRect(
+        (rectangle.center.x - rectangle.width / 2).toInt(),
+        (rectangle.center.y - rectangle.height / 2).toInt(),
+        rectangle.width.toInt(),
+        rectangle.height.toInt()
+    )
+}
 
 fun Graphics2D.drawLine(start: Vector.Cartesian, end: Vector.Cartesian) {
     drawLine(start.x.toInt(), start.y.toInt(), end.x.toInt(), end.y.toInt())
@@ -89,7 +104,7 @@ fun Graphics2D.drawSuccess(index: Int, gun: VirtualGun) {
     drawRect(success, 10 * index, 100 - success, 10)
 
     color = Color.white
-    drawString("${gun.success.roundDecimals(3)}%", 110, 10 * index)
+    drawString("${gun.success.roundDecimals(3)}% ${gun.name}", 110, 10 * index)
 }
 
 fun Graphics2D.drawCircle(center: Vector, radius: Double) {
@@ -116,15 +131,22 @@ fun Graphics2D.drawCluster(wave: Wave, time: Long) {
 
     val heading = theta(wave.origin, wave.snapshot.scan.location)
     val escapeAngle = wave.escapeAngle
-    val rotationDirection = wave.snapshot.rotateDirection
+    val direction = wave.snapshot.gfDirection
 
     for (i in buckets.indices) {
-        val green = (255 * (buckets[i] - min) / (max - min)).toInt()
-        color = Color(0, green, 255 - green)
-        val gf = i.toGuessFactor(buckets.size)
-        val bearing = rotationDirection * gf * (if (gf < 0) escapeAngle.reverse else escapeAngle.forward)
+        color = when (i) {
+            0 -> Color.red
+            buckets.lastIndex -> Color.green
+            else -> {
+                val green = (255 * (buckets[i] - min) / (max - min)).toInt()
+                Color(0, green, 255 - green)
+            }
+        }
+
+        val gf = direction * i.toGuessFactor(buckets.size)
+        val bearing = gf * if (gf < 0) escapeAngle.leftAngle else escapeAngle.rightAngle
         fillCircle(
-            wave.origin + Polar(heading + bearing, radius),
+            wave.origin.project(heading + bearing, radius),
             if (wave.context[Jarvis.Companion.RealBullet]) 8 else 3
         )
     }

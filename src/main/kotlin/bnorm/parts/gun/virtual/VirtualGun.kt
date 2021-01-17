@@ -2,6 +2,7 @@ package bnorm.parts.gun.virtual
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.geo.contains
 import bnorm.parts.gun.Prediction
 import bnorm.parts.tank.TANK_SIZE
 import bnorm.r
@@ -14,11 +15,12 @@ import kotlin.math.sqrt
 class VirtualGun(
     private val source: Robot,
     private val target: Robot,
+    val name: String,
     val prediction: Prediction,
 ) {
     companion object {
         private val TANK_HIT_RADIUS = sqrt(2.0) * TANK_SIZE / 2
-        private const val ROLLING = 250
+        private const val ROLLING = 100
     }
 
     class VirtualBullet(
@@ -56,39 +58,31 @@ class VirtualGun(
 //            // Rolling average over the last 2000
 //            success = ((ROLLING - 1) * success + if (hit) 1 else 0) / ROLLING
 //        } else {
-            success = this.hit.toDouble() / fired
+        success = this.hit.toDouble() / fired
 //        }
     }
 
-    suspend fun fire(power: Double): Vector {
+    fun fire(power: Double): Vector {
         val speed = Rules.getBulletSpeed(power)
-        val velocity = Polar(prediction.predict(target, power).theta, speed)
+        val velocity = Polar(prediction.predict(power).theta, speed)
         _bullets.addLast(VirtualBullet(source.latest.time, source.latest.location, velocity, speed))
         return velocity
     }
 
     fun scan(scan: RobotScan) {
-        val x = scan.location.x
-        val y = scan.location.y
         val time = scan.time
 
         val iterator = _bullets.listIterator()
         while (iterator.hasNext()) {
             val bullet = iterator.next()
-            val distance = bullet.startLocation.r(x, y) - bullet.radius(time)
-            if (distance < -TANK_HIT_RADIUS) {
+            if (bullet.location(time) in scan.tank) {
+                // hit
+                increment(hit = true)
+                iterator.remove()
+            } else if (bullet.radius(time) - bullet.startLocation.r(scan.location) > TANK_SIZE) {
                 // miss
                 increment(hit = false)
                 iterator.remove()
-            } else if (distance < TANK_HIT_RADIUS) {
-                val bulletLocation = bullet.location(time)
-                if (x in (bulletLocation.x - TANK_SIZE / 2)..(bulletLocation.x + TANK_SIZE / 2) &&
-                    y in (bulletLocation.y - TANK_SIZE / 2)..(bulletLocation.y + TANK_SIZE / 2)
-                ) {
-                    // hit
-                    increment(hit = true)
-                    iterator.remove()
-                }
             }
         }
     }

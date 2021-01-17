@@ -5,6 +5,7 @@ import bnorm.parts.gun.Prediction
 import bnorm.robot.Robot
 import bnorm.robot.RobotContext
 import bnorm.robot.RobotService
+import bnorm.trace
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -18,14 +19,14 @@ class VirtualGuns(
     }
 
     class Configuration {
-        var predictions: List<Prediction>? = null
+        var predictions: Map<String, Prediction>? = null
     }
 
     companion object : RobotContext.Feature<Configuration, VirtualGuns> {
         override suspend fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): VirtualGuns {
             val configuration = Configuration().apply(block)
             val predictions = configuration.predictions!!
-            val guns = predictions.map { VirtualGun(self, robot, it) }
+            val guns = predictions.map { (k, v) -> VirtualGun(self, robot, k, v) }
 
             robot.onScan { scan ->
                 guns.forEach { it.scan(scan) }
@@ -49,7 +50,11 @@ class VirtualGuns(
         if (power <= 0.0) return target.latest.location - source.latest.location
 
         return coroutineScope {
-            guns.map { gun -> gun.success to async { gun.fire(power) } }
+            guns.map { gun ->
+                gun.success to async {
+                    trace("gun-${gun.name}") { gun.fire(power) }
+                }
+            }
         }.maxByOrNull { it.first }!!.second.await()
     }
 }

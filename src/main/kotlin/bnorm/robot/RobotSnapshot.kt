@@ -8,6 +8,9 @@ import bnorm.r
 import bnorm.robot.snapshot.WallProbe
 import bnorm.sqr
 import bnorm.theta
+import bnorm.truncate
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import robocode.util.Utils
 import kotlin.math.PI
 import kotlin.math.abs
@@ -17,60 +20,78 @@ import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+@Serializable
 data class RobotSnapshot(
     val scan: RobotScan,
-    val rotateDirection: Int,
     val moveDirection: Int,
+    val rotateDirection: Int,
+    val accelerationDirection: Int,
     val wallProbe: WallProbe,
     val distance: Double,
     val lateralSpeed: Double,
     val advancingSpeed: Double,
     val acceleration: Double,
+    val lateralAcceleration: Double,
+    val advancingAcceleration: Double,
     val distLast10: Double,
     val distLast30: Double,
     val distLast90: Double,
-    val timeSinceMovement: Long,
-    val timeSinceReverse: Long,
-    val timeSinceDeceleration: Long,
-    val timeSinceBullet: Long,
-    val wallDistance: Double,
-    val forwardWallDistance: Double,
-    val backwardWallDistance: Double,
+    val timeDeltaMoveDirection: Long,
+    val timeDeltaRotateDirection: Long,
+    val timeDeltaAccelerationDirection: Long,
+    val timeDeltaVelocityChange: Long,
     val cornerDistance: Double,
     val cornerDirection: Double,
+    val activeWaveCount: Long,
 ) : GuessFactorSnapshot {
+    val gfDirection: Int get() = rotateDirection
+
+    val nLateralAcceleration: Double get() = normalize(-TANK_DECELERATION, lateralAcceleration, TANK_ACCELERATION)
+    val nAdvancingAcceleration: Double get() = normalize(-TANK_DECELERATION, advancingAcceleration, TANK_DECELERATION)
+    val nAcceleration: Double get() = normalize(-TANK_DECELERATION, acceleration, TANK_ACCELERATION)
+
     val nTime: Double get() = normalize(scan.time)
-    val nTimeSinceMovement: Double get() = normalize(timeSinceMovement)
-    val nTimeSinceReverse: Double get() = normalize(timeSinceReverse)
-    val nTimeSinceDeceleration: Double get() = normalize(timeSinceDeceleration)
-    val nTimeSinceBullet: Double get() = normalize(timeSinceBullet)
+    val nTimeDeltaMovement: Double get() = normalize(timeDeltaMoveDirection)
+    val nTimeDeltaRotateDirection: Double get() = normalize(timeDeltaRotateDirection)
+    val nTimeDeltaAccelerationDirection: Double get() = normalize(timeDeltaAccelerationDirection)
+    val nTimeDeltaVelocityChange: Double get() = normalize(timeDeltaVelocityChange)
+    val nActiveWaveCount: Double get() = normalize(activeWaveCount)
+
+    val nForwardWallDistance: Double
+        get() = normalize(0.0, wallProbe.perpendicular.forward, wallProbe.position.diagonal)
+    val nBackwardWallDistance: Double
+        get() = normalize(0.0, wallProbe.perpendicular.backward, wallProbe.position.diagonal)
 
     companion object {
         val DIMENSIONS = listOf(
             RobotSnapshot::distance,
             RobotSnapshot::lateralSpeed,
             RobotSnapshot::advancingSpeed,
-            RobotSnapshot::acceleration,
+//            RobotSnapshot::nLateralAcceleration,
+//            RobotSnapshot::nAdvancingAcceleration,
+            RobotSnapshot::nAcceleration,
             RobotSnapshot::distLast10,
             RobotSnapshot::distLast30,
-//            RobotSnapshot::distLast90,
-            RobotSnapshot::nTime,
-//            RobotSnapshot::nTimeSinceMovement,
-            RobotSnapshot::nTimeSinceReverse,
-            RobotSnapshot::nTimeSinceDeceleration,
-//            RobotSnapshot::nTimeSinceBullet,
-//            RobotSnapshot::wallDistance,
-            RobotSnapshot::forwardWallDistance,
-            RobotSnapshot::backwardWallDistance,
+            RobotSnapshot::distLast90,
+//            RobotSnapshot::nTime,
+            RobotSnapshot::nTimeDeltaMovement,
+            RobotSnapshot::nTimeDeltaRotateDirection,
+            RobotSnapshot::nTimeDeltaAccelerationDirection,
+//            RobotSnapshot::nTimeDeltaVelocityChange,
+            RobotSnapshot::nForwardWallDistance,
+            RobotSnapshot::nBackwardWallDistance,
 //            RobotSnapshot::cornerDistance,
 //            RobotSnapshot::cornerDirection,
+//            RobotSnapshot::nActiveWaveCount,
         )
     }
 
+    @Transient
     val guessFactorDimensions: DoubleArray = DoubleArray(DIMENSIONS.size) {
         DIMENSIONS[it].invoke(this@RobotSnapshot)
     }
 
+    @Transient
     var prev: RobotSnapshot? = null
     override var guessFactor: Double = 0.0
 }
@@ -86,42 +107,43 @@ fun RobotSnapshot?.traveledOver(turns: Long): Double {
     return start.r(end)
 }
 
-fun RobotSnapshot?.timeSinceMovement(speed: Double): Long {
-    if (this == null) return 0
-    if (speed != 0.0) return this.timeSinceMovement + 1
-    return 0
+fun RobotSnapshot?.timeDeltaMoveDirection(movementDirection: Int): Long {
+    return if (this != null && movementDirection == this.moveDirection)
+        this.timeDeltaMoveDirection + 1
+    else 0
 }
 
-fun RobotSnapshot?.timeSinceReverse(direction: Int): Long {
-    if (this == null) return 0
-    if (this.moveDirection == direction) return this.timeSinceReverse + 1
-    return 0
+fun RobotSnapshot?.timeDeltaRotateDirection(rotateDirection: Int): Long {
+    return if (this != null && rotateDirection == this.rotateDirection)
+        this.timeDeltaRotateDirection + 1
+    else 0
 }
 
-fun RobotSnapshot?.timeSinceDeceleration(acceleration: Double): Long {
-    if (this == null) return 0
-    if (acceleration >= 0.0) return this.timeSinceDeceleration + 1
-    return 0
+fun RobotSnapshot?.timeDeltaAccelerationDirection(accelerationDirection: Int): Long {
+    return if (this != null && accelerationDirection == this.accelerationDirection)
+        this.timeDeltaAccelerationDirection + 1
+    else 0
 }
 
-fun RobotSnapshot?.timeSinceBullet(robot: Robot): Long {
-    if (this == null) return 0
-    val current = robot.latest.energy
-    val previous = robot.latest.prev?.energy ?: current
-    if (current < previous) return 0
-    return this.timeSinceDeceleration + 1
+fun RobotSnapshot?.timeDeltaLateralSpeed(lateralSpeed: Double): Long {
+    return if (this != null && lateralSpeed == this.lateralSpeed)
+        this.timeDeltaVelocityChange + 1
+    else 0
 }
 
-fun normalize(value: Long): Double = 1.0 - 1.0 / (1.0 + value)
-fun normalize(value: Double): Double = 1.0 - 1.0 / (1.0 + value)
+fun normalize(value: Long): Double = 1.0 - 1.0 / (1.0 + value / 10.0)
+fun normalize(value: Double): Double = 1.0 - 1.0 / (1.0 + value / 10.0)
 fun normalize(min: Double, value: Double, max: Double): Double = (value - min) / (max - min)
 
 fun RobotService.robotSnapshot(
     scan: RobotScan,
-    prevSnapshot: RobotSnapshot?
+    prevSnapshot: RobotSnapshot?,
+    activeWaveCount: Long = 0,
 ): RobotSnapshot {
     val selfScan = self.latest
     val battleField = self.battleField
+    val prevScan = scan.prev?.takeIf { it.time == selfScan.time - 1 } ?: scan
+    val prevVelocity = prevScan.velocity
 
     val theta = theta(selfScan.location, scan.location)
     val distance = r(selfScan.location, scan.location)
@@ -134,26 +156,36 @@ fun RobotService.robotSnapshot(
     val lateralSpeed = sin(relativeBearing) * speed
     val advancingSpeed = cos(relativeBearing) * speed
 
-    val rotateDirection = when (val d = sign(lateralSpeed).roundToInt()) {
-        0 -> prevSnapshot?.rotateDirection ?: 0
-        else -> d
-    }
-    val moveDirection = when (val d = sign(speed).roundToInt()) {
+    // Avoid really small movement changes
+    val moveDirection = when (val d = sign(truncate(speed, 1e-3)).roundToInt()) {
         0 -> prevSnapshot?.moveDirection ?: 0
         else -> d
     }
+    val acceleration = moveDirection * (speed - prevVelocity.r)
 
-    val prevVelocity = (scan.prev?.takeIf { it.time == selfScan.time - 1 } ?: scan).velocity
-    val acceleration = (prevSnapshot?.moveDirection ?: moveDirection) * (speed - prevVelocity.r)
+    // Avoid really small movement changes
+    val rotateDirection = when (val d = sign(truncate(lateralSpeed, 1e-3)).roundToInt()) {
+        0 -> prevSnapshot?.rotateDirection ?: 0
+        else -> d
+    }
+
+    // Avoid really small movement changes
+    val accelerationDirection = when (val d = sign(truncate(acceleration * lateralSpeed, 1e-3)).roundToInt()) {
+        0 -> prevSnapshot?.accelerationDirection ?: 0
+        else -> d
+    }
+
+    val lateralAcceleration = abs(sin(relativeBearing)) * acceleration
+    val advancingAcceleration = cos(relativeBearing) * acceleration
 
     val distLast10 = prevSnapshot.traveledOver(10)
     val distLast30 = prevSnapshot.traveledOver(30)
     val distLast90 = prevSnapshot.traveledOver(90)
 
-    val timeSinceMovement = prevSnapshot.timeSinceMovement(speed)
-    val timeSinceReverse = prevSnapshot.timeSinceReverse(moveDirection)
-    val timeSinceDeceleration = prevSnapshot.timeSinceDeceleration(acceleration)
-    val timeSinceBullet = prevSnapshot.timeSinceBullet(self)
+    val timeDeltaMoveDirection = prevSnapshot.timeDeltaMoveDirection(moveDirection)
+    val timeDeltaRotateDirection = prevSnapshot.timeDeltaRotateDirection(accelerationDirection)
+    val timeDeltaAccelerationDirection = prevSnapshot.timeDeltaAccelerationDirection(accelerationDirection)
+    val timeDeltaVelocityChange = prevSnapshot.timeDeltaLateralSpeed(lateralSpeed)
 
     val wallProbe = WallProbe(
         battleField,
@@ -167,30 +199,30 @@ fun RobotService.robotSnapshot(
     val east = battleField.width - west
     val north = battleField.height - south
 
-    val wallDistance = minOf(west, south, east, north)
     val cornerDistance = sqrt(sqr(minOf(west, east)) + sqr(minOf(south, north)))
     val cornerDirection = sign(if (prevSnapshot != null) cornerDistance - prevSnapshot.cornerDistance else 0.0)
 
     return RobotSnapshot(
         scan = scan,
-        rotateDirection = rotateDirection,
         moveDirection = moveDirection,
+        rotateDirection = rotateDirection,
+        accelerationDirection = accelerationDirection,
         wallProbe = wallProbe,
         distance = normalize(0.0, distance, battleField.diagonal),
         lateralSpeed = normalize(0.0, abs(lateralSpeed), TANK_MAX_SPEED),
         advancingSpeed = normalize(-TANK_MAX_SPEED, advancingSpeed, TANK_MAX_SPEED),
-        acceleration = normalize(-TANK_DECELERATION, acceleration, TANK_ACCELERATION),
+        acceleration = acceleration,
+        lateralAcceleration = lateralAcceleration,
+        advancingAcceleration = advancingAcceleration,
         distLast10 = normalize(0.0, distLast10, 10 * TANK_MAX_SPEED),
         distLast30 = normalize(0.0, distLast30, 30 * TANK_MAX_SPEED),
         distLast90 = normalize(0.0, distLast90, 90 * TANK_MAX_SPEED),
-        timeSinceMovement = timeSinceMovement,
-        timeSinceReverse = timeSinceReverse,
-        timeSinceDeceleration = timeSinceDeceleration,
-        timeSinceBullet = timeSinceBullet,
-        wallDistance = normalize(0.0, wallDistance, minOf(battleField.width / 2, battleField.height / 2)),
-        forwardWallDistance = normalize(wallProbe.perpendicular.forward),
-        backwardWallDistance = normalize(wallProbe.perpendicular.backward),
+        timeDeltaMoveDirection = timeDeltaMoveDirection,
+        timeDeltaRotateDirection = timeDeltaRotateDirection,
+        timeDeltaAccelerationDirection = timeDeltaAccelerationDirection,
+        timeDeltaVelocityChange = timeDeltaVelocityChange,
         cornerDistance = cornerDistance,
-        cornerDirection = cornerDirection
+        cornerDirection = cornerDirection,
+        activeWaveCount = activeWaveCount,
     )
 }

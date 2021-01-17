@@ -3,12 +3,13 @@ package bnorm.parts.gun
 import bnorm.Polar
 import bnorm.Vector
 import bnorm.kdtree.KdTree
-import bnorm.parts.gun.virtual.escapeAngle
 import bnorm.parts.tank.TANK_SIZE
+import bnorm.parts.tank.escape.escape
 import bnorm.robot.Robot
 import bnorm.robot.snapshot
 import bnorm.sqr
 import bnorm.theta
+import bnorm.trace
 import robocode.Rules
 import kotlin.math.asin
 import kotlin.math.exp
@@ -20,33 +21,36 @@ interface GuessFactorSnapshot {
 
 class GuessFactorPrediction<T : GuessFactorSnapshot>(
     private val self: Robot,
+    private val robot: Robot,
     private val clusterFunction: (Robot) -> Collection<KdTree.Neighbor<T>>,
 ) : Prediction {
-    override suspend fun predict(robot: Robot, bulletPower: Double): Vector {
-        val escapeAngle = escapeAngle(self, robot, Rules.getBulletSpeed(bulletPower))
-//        val distance = r(gun.x, gun.y, robot.latest.location)
-//        val robotAngle = robotAngle(distance)
+    override fun predict(bulletPower: Double): Vector {
+        trace("gf") {
+            val source = self.latest.location
+            val target = robot.latest.location
+            val escapeAngle = self.battleField.escape(source, target, Rules.getBulletSpeed(bulletPower))
 
-        val heading = theta(self.latest.location, robot.latest.location)
-        val rotationDirection = robot.snapshot.rotateDirection // TODO
-        val cluster = clusterFunction(robot)
-        val buckets = cluster.buckets(61)
+//        val robotAngle = robotAngle(r(gun.x, gun.y, robot.latest.location))
 
-        // TODO instead of buckets, use robotAngle to find the angle which the most number of angles match
+            val heading = theta(source, target)
+            val direction = robot.snapshot.gfDirection
+            val cluster = clusterFunction(robot)
+            val buckets = cluster.buckets(31)
 
-        var max = 0.0
-        var index = (buckets.size - 1) / 2
-        for (i in buckets.indices) {
-            val value = buckets[i]
-            if (value > max) {
-                max = value
-                index = i
+            var max = 0.0
+            var index = (buckets.size - 1) / 2
+            for (i in buckets.indices) {
+                val value = buckets[i]
+                if (value > max) {
+                    max = value
+                    index = i
+                }
             }
-        }
 
-        val gf = index.toGuessFactor(buckets.size)
-        val bearing = rotationDirection * gf * if (gf < 0) escapeAngle.reverse else escapeAngle.forward
-        return Polar(heading + bearing, 1.0)
+            val gf = direction * index.toGuessFactor(buckets.size)
+            val bearing = gf * if (gf < 0) escapeAngle.leftAngle else escapeAngle.rightAngle
+            return Polar(heading + bearing, 1.0)
+        }
     }
 }
 
@@ -65,19 +69,21 @@ fun robotAngle(distance: Double): Double {
 fun Iterable<KdTree.Neighbor<GuessFactorSnapshot>>.buckets(bucketCount: Int): DoubleArray {
     val buckets = DoubleArray(bucketCount)
 
-    for (b in buckets.indices) {
-        val gf = b.toGuessFactor(bucketCount)
-        for (point in this) {
-            buckets[b] += gauss(1.0 / point.dist, point.value.guessFactor, 0.1, gf)
+    trace("buckets") {
+        for (b in buckets.indices) {
+            val gf = b.toGuessFactor(bucketCount)
+            for (point in this) {
+                buckets[b] += gauss(1.0 / point.dist, point.value.guessFactor, 0.1, gf)
+            }
         }
     }
 
     return buckets
 }
 
-fun gauss(
+inline fun gauss(
     a: Double, // Height
     b: Double, // Center
     c: Double, // Standard Deviation
     x: Double
-) = a * exp(-sqr(b - x) / (2.0 * sqr(c)))
+) = a / exp(sqr(b - x) / (2.0 * c * c))

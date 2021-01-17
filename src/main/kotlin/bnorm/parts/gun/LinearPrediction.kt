@@ -7,9 +7,10 @@ import bnorm.sqr
 import robocode.Rules
 
 class LinearPrediction(
-    private val self: Robot
+    private val self: Robot,
+    private val robot: Robot,
 ) : Prediction {
-    override suspend fun predict(robot: Robot, bulletPower: Double): Vector {
+    override fun predict(bulletPower: Double): Vector {
         val enemyLocations = self.generateSequence(robot) { _, curr ->
             curr.copy(
                 location = curr.location + curr.velocity,

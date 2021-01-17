@@ -1,5 +1,6 @@
 package bnorm
 
+import kotlinx.serialization.Serializable
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -21,12 +22,14 @@ sealed class Vector {
 
     operator fun times(scalar: Double) = Polar(theta, scalar * r)
 
+    @Serializable
     data class Cartesian(override val x: Double, override val y: Double) : Vector() {
         override val theta: Double get() = atan2(x, y)
         override val r: Double get() = sqrt(x * x + y * y)
         override val r2: Double get() = x * x + y * y
     }
 
+    @Serializable
     data class Polar(override val theta: Double, override val r: Double) : Vector() {
         override val x: Double get() = sin(theta) * r
         override val y: Double get() = cos(theta) * r
@@ -39,6 +42,9 @@ fun Polar(theta: Double, r: Double) = Vector.Polar(theta, r)
 
 fun Vector.toPolar() = this as? Vector.Polar ?: Vector.Polar(theta, r)
 fun Vector.toCartesian() = this as? Vector.Cartesian ?: Vector.Cartesian(x, y)
+
+fun Vector.project(theta: Double, r: Double) =
+    Vector.Cartesian(x + sin(theta) * r, y + cos(theta) * r)
 
 fun Vector.theta(x: Double, y: Double): Double {
     return atan2(x - this.x, y - this.y)

@@ -12,6 +12,10 @@ inline fun sqr(d: Double): Double {
     return d * d
 }
 
+inline fun truncate(d: Double, delta: Double): Double {
+    return if (abs(d) < delta) 0.0 else d
+}
+
 inline fun theta(x: Double, y: Double): Double =
     atan2(x, y)
 
@@ -54,7 +58,12 @@ fun rollingVariance(
     variances: DoubleArray,
     values: DoubleArray
 ) {
-    if (n == 1) {
+    if (n == 0) {
+        for (i in variances.indices) {
+            means[i] = values[i]
+            variances[i] = 0.0
+        }
+    } else if (n == 1) {
         for (i in variances.indices) {
             val v = values[i]
             val oldMean = means[i]

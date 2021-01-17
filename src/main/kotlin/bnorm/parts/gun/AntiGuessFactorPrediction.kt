@@ -3,7 +3,7 @@ package bnorm.parts.gun
 import bnorm.Polar
 import bnorm.Vector
 import bnorm.kdtree.KdTree
-import bnorm.parts.gun.virtual.escapeAngle
+import bnorm.parts.tank.escape.escape
 import bnorm.robot.Robot
 import bnorm.robot.RobotSnapshots
 import bnorm.theta
@@ -11,16 +11,19 @@ import robocode.Rules
 
 class AntiGuessFactorPrediction<T : GuessFactorSnapshot>(
     private val self: Robot,
+    private val robot: Robot,
     private val positiveFunction: (Robot) -> Collection<KdTree.Neighbor<T>>,
     private val negativeFunction: (Robot) -> Collection<KdTree.Neighbor<T>>,
 ) : Prediction {
-    override suspend fun predict(robot: Robot, bulletPower: Double): Vector {
-        val escapeAngle = escapeAngle(self, robot, Rules.getBulletSpeed(bulletPower))
+    override fun predict(bulletPower: Double): Vector {
+        val source = self.latest.location
+        val target = robot.latest.location
+        val escapeAngle = self.battleField.escape(source, target, Rules.getBulletSpeed(bulletPower))
 //        val distance = r(gun.x, gun.y, robot.latest.location)
 //        val robotAngle = robotAngle(distance)
 
-        val heading = theta(self.latest.location, robot.latest.location)
-        val rotationDirection = robot.context[RobotSnapshots].latest.rotateDirection // TODO
+        val heading = theta(source, target)
+        val direction = robot.context[RobotSnapshots].latest.gfDirection
         val buckets = buckets(positiveFunction(robot), negativeFunction(robot), 61)
 
         // TODO instead of buckets, use robotAngle to find the angle which the most number of angles match
@@ -35,8 +38,8 @@ class AntiGuessFactorPrediction<T : GuessFactorSnapshot>(
             }
         }
 
-        val gf = index.toGuessFactor(buckets.size)
-        val bearing = rotationDirection * gf * if (gf < 0) escapeAngle.reverse else escapeAngle.forward
+        val gf = direction * index.toGuessFactor(buckets.size)
+        val bearing = gf * if (gf < 0) escapeAngle.leftAngle else escapeAngle.rightAngle
         return Polar(heading + bearing, 1.0)
     }
 }
