@@ -1,27 +1,38 @@
 package bnorm.parts.tank
 
 import bnorm.Vector
+import bnorm.geo.contains
+import bnorm.parts.BattleField
 import bnorm.robot.Robot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import robocode.Rules
 
 fun Robot.simulate(movement: Movement) =
-    simulate(latest.location, latest.velocity, movement)
+    battleField.simulate(latest.location, latest.velocity, movement)
 
-fun simulate(
+fun BattleField.simulate(
     location: Vector.Cartesian,
     velocity: Vector.Polar,
     movement: Movement,
-): Flow<Vector.Cartesian> = flow {
-    var location = location
-    var velocity = velocity
-    while (true) {
-        val move = movement.invoke(location, velocity)
-        val v = simulateVelocity(velocity, move.theta, move.r)
-        location += v
-        emit(location)
-        velocity = v
+): Flow<Vector.Cartesian> {
+    val battleField = this
+    return flow {
+        var location = location
+        var velocity = velocity
+        while (true) {
+            val move = movement.invoke(location, velocity)
+            val v = simulateVelocity(velocity, move.theta, move.r)
+            location += v
+//            if (location !in battleField.movable) {
+//                location = Vector.Cartesian(
+//                    location.x.coerceIn(battleField.movable.xRange),
+//                    location.y.coerceIn(battleField.movable.yRange),
+//                )
+//            }
+            emit(location)
+            velocity = v
+        }
     }
 }
 
@@ -55,9 +66,9 @@ fun simulateSpeed(currentSpeed: Double, distance: Double): Double {
         val decelerationDistance = 0.5 * TANK_DECELERATION * decelerationTime * decelerationTime + decelerationTime
         if (distance <= decelerationDistance) {
             // start decelerating so velocity is 0 when distance is 0
-            val time = decelerationDistance / (decelerationTime + 1)
+            val time = decelerationDistance / (decelerationTime + 1) - 1
             if (time <= 1) {
-                return (currentSpeed - TANK_DECELERATION).coerceAtMost(distance)
+                return (currentSpeed - TANK_DECELERATION).coerceIn(0.0, distance)
             } else {
                 val newSpeed = time * TANK_DECELERATION
                 if (currentSpeed < newSpeed) {

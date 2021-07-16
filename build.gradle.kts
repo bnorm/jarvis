@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm") version "1.4.21"
     kotlin("kapt") version "1.4.21"
     kotlin("plugin.serialization") version "1.4.21"
-    id("com.bnorm.robocode") version "0.1.0"
+    id("com.bnorm.robocode") version "0.1.1"
     id("me.champeau.gradle.jmh") version "0.5.2"
 }
 
@@ -88,6 +88,13 @@ val battlesRuntimeOnly by configurations.getting {
 
 dependencies {
     battlesImplementation("com.jakewharton.picnic:picnic:0.5.0")
+
+    battlesImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.1")
+    battlesImplementation("com.squareup.retrofit2:retrofit:2.9.0")
+    battlesImplementation("com.squareup.okhttp3:okhttp:4.9.1")
+    battlesImplementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.8.0")
+    battlesImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")
+
     battlesImplementation(kotlin("test-junit5"))
     battlesImplementation("org.junit.jupiter:junit-jupiter-api:5.6.0")
     battlesRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.6.0")

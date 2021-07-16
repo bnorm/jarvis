@@ -7,8 +7,10 @@ import kotlin.math.sqrt
 import kotlin.test.assertEquals
 
 class IntersectTest {
-    private val SQRT_2 = sqrt(2.0)
-    private val ORIGIN = Vector.Cartesian(0.0, 0.0)
+    companion object {
+        private val SQRT_2 = sqrt(2.0)
+        private val ORIGIN = Vector.Cartesian(0.0, 0.0)
+    }
 
     @Test
     fun `test circle rectangle intersection`() {
@@ -38,13 +40,75 @@ class IntersectTest {
         )
     }
 
+    @Test
+    fun `test line intersect circle`() {
+        assertClose(
+            expected = setOf(
+                Vector.Cartesian(-SQRT_2 / 2, -SQRT_2 / 2),
+                Vector.Cartesian(SQRT_2 / 2, SQRT_2 / 2)
+            ),
+            actual = Circle(ORIGIN, 1.0) intersect Line(1.0, 0.0)
+        )
+
+        assertClose(
+            expected = setOf(
+                Vector.Cartesian(-1.0, 0.0),
+                Vector.Cartesian(0.0, 1.0),
+            ),
+            actual = Circle(ORIGIN, 1.0) intersect Line(1.0, 1.0)
+        )
+
+        assertClose(
+            expected = setOf(
+                Vector.Cartesian(1.0, 0.0),
+                Vector.Cartesian(0.0, -1.0),
+            ),
+            actual = Circle(ORIGIN, 1.0) intersect Line(1.0, -1.0)
+        )
+
+        assertClose(
+            expected = setOf(
+                Vector.Cartesian(1.0, 0.0),
+                Vector.Cartesian(0.0, 1.0),
+            ),
+            actual = Circle(ORIGIN, 1.0) intersect Line(-1.0, 1.0)
+        )
+
+        assertClose(
+            expected = setOf(
+                Vector.Cartesian(-1.0, 0.0),
+                Vector.Cartesian(0.0, -1.0),
+            ),
+            actual = Circle(ORIGIN, 1.0) intersect Line(-1.0, -1.0)
+        )
+
+        // Vertical line
+        assertClose(
+            expected = setOf(
+                Vector.Cartesian(0.0, 1.0),
+                Vector.Cartesian(0.0, -1.0),
+            ),
+            actual = Circle(ORIGIN, 1.0) intersect Line(Double.NaN, 0.0)
+        )
+
+        // Horizontal line
+        assertClose(
+            expected = setOf(
+                Vector.Cartesian(1.0, 0.0),
+                Vector.Cartesian(-1.0, 0.0)
+            ),
+            actual = Circle(ORIGIN, 1.0) intersect Line(0.0, 0.0)
+        )
+    }
+
+    private val comparator = compareBy<Vector.Cartesian> { it.x }.thenBy { it.y }
     private fun assertClose(
         expected: Set<Vector.Cartesian>,
         actual: Set<Vector.Cartesian>,
         delta: Double = 1e-12,
     ) {
-        val sortedExpected: List<Vector.Cartesian> = expected.sortedBy { it.r2(ORIGIN) }
-        val sortedActual: List<Vector.Cartesian> = actual.sortedBy { it.r2(ORIGIN) }
+        val sortedExpected = expected.sortedWith(comparator)
+        val sortedActual = actual.sortedWith(comparator)
 
         val delta2 = delta * delta
         val distances = sortedActual.zip(sortedExpected) { a, e -> a.r2(e) }

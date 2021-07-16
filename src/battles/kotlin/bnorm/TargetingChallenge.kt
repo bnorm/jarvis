@@ -50,6 +50,7 @@ class TargetingChallenge {
             )
         )
         println(challenge.toTable())
+        println(challenge.toWiki("[[Jarvis]]* || [[User:bnorm|bnorm]] || KNN/GF"))
 
 /*
                                                                   Targeting Challenge: Random Movement

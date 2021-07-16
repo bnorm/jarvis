@@ -3,7 +3,7 @@ package bnorm.robot
 import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.WaveContext
 
-class RobotSnapshots(
+class AttackSnapshots(
     var latest: RobotSnapshot
 ) {
     fun interface Factory {
@@ -18,11 +18,11 @@ class RobotSnapshots(
         override suspend fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): RobotSnapshots {
             val configuration = Configuration().apply(block)
             val factory = configuration.factory
-            val snapshots = RobotSnapshots(factory.create(robot.latest, null))
+            val snapshots = RobotSnapshots(factory.create(self.latest, null))
 
             var prevSnapshot: RobotSnapshot? = snapshots.latest
             robot.onScan { scan ->
-                val snapshot = factory.create(scan, prevSnapshot)
+                val snapshot = factory.create(self.latest, prevSnapshot)
                 snapshot.prev = prevSnapshot
                 prevSnapshot = snapshot
                 snapshots.latest = snapshot
@@ -34,5 +34,5 @@ class RobotSnapshots(
     }
 }
 
-val Robot.snapshot: RobotSnapshot get() = context[RobotSnapshots].latest
-val Wave.snapshot: RobotSnapshot get() = context[RobotSnapshots]
+val Robot.attackSnapshot: RobotSnapshot get() = context[AttackSnapshots].latest
+val Wave.attackSnapshot: RobotSnapshot get() = context[AttackSnapshots]

@@ -152,7 +152,7 @@ private fun RowDsl.botRow(name: String, scores: List<Double>) {
     }
 }
 
-private fun Double.roundDecimals(decimals: Int): Double {
+fun Double.roundDecimals(decimals: Int): Double {
     var mul = 1.0
     repeat(decimals) { mul *= 10.0 }
     return (this * mul).roundToLong() / mul

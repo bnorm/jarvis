@@ -1,7 +1,9 @@
 package bnorm
 
 import bnorm.geo.Circle
+import bnorm.geo.Line
 import bnorm.geo.Rectangle
+import bnorm.geo.intersect
 import bnorm.parts.gun.CircularPrediction
 import bnorm.parts.gun.DirectPrediction
 import bnorm.parts.gun.GuessFactorPrediction
@@ -11,8 +13,10 @@ import bnorm.parts.gun.toGuessFactor
 import bnorm.parts.gun.virtual.VirtualGun
 import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.radius
+import bnorm.parts.tank.Movement
 import bnorm.parts.tank.OrbitMovement
 import bnorm.parts.tank.WallSmoothMovement
+import bnorm.parts.tank.escape.EscapeEnvelope
 import bnorm.parts.tank.escape.escapeAngle
 import bnorm.parts.tank.simulate
 import bnorm.robot.Robot
@@ -20,6 +24,7 @@ import bnorm.robot.RobotScan
 import bnorm.robot.snapshot
 import bnorm.robot.snapshot.WallProbe
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.runBlocking
 import robocode.Rules
@@ -52,7 +57,7 @@ fun Graphics2D.fillCircle(location: Vector, diameter: Int) {
     fillOval((location.x - diameter / 2.0).toInt(), (location.y - diameter / 2.0).toInt(), diameter, diameter)
 }
 
-fun Graphics2D.drawProbe(location: Vector.Cartesian, direction: Vector.Polar, diameter: Int) {
+fun Graphics2D.drawProbe(location: Vector.Cartesian, direction: Vector.Polar, diameter: Int = 4) {
     drawLine(location, direction)
     fillCircle(location + direction, diameter)
 }
@@ -116,12 +121,65 @@ fun Graphics2D.drawBox(center: Vector, side: Double) {
     drawRect((center.x - halfSide).toInt(), (center.y - halfSide).toInt(), side.toInt(), side.toInt())
 }
 
+fun Graphics2D.draw(
+    envelope: EscapeEnvelope,
+    source: Vector.Cartesian = envelope.source,
+    target: Vector.Cartesian = envelope.target,
+    buckets: DoubleArray? = null,
+    direction: Int = 1,
+) {
+    color = Color.blue
+    draw(envelope.circle)
+    for (p in envelope) {
+        drawLine(envelope.source, p)
+    }
+
+    if (buckets == null) {
+        color = Color.red
+        for (p in envelope) {
+            drawLine(envelope.target, p)
+        }
+    } else {
+        val max = buckets.maxOrNull()!!
+        val min = buckets.minOrNull()!!
+
+        val heading = theta(source, target)
+        val circle = envelope.circle
+
+        for (i in buckets.indices) {
+            color = when (i) {
+                0 -> Color.red
+                buckets.lastIndex -> Color.green
+                else -> {
+                    val green = (255 * (buckets[i] - min) / (max - min)).toInt()
+                    Color(0, green, 255 - green)
+                }
+            }
+
+            val gf = direction * i.toGuessFactor(buckets.size)
+            val bearing = gf * if (gf < 0) envelope.leftAngle else envelope.rightAngle
+
+            val trajectory = Line(source, heading + bearing)
+            val intersection = (circle intersect trajectory).toList()
+            if (intersection.size == 2) {
+                drawLine(intersection[0], intersection[1])
+            }
+        }
+    }
+}
+
 fun Graphics2D.drawCluster(wave: Wave, time: Long) {
     val radius = wave.radius(time)
-    val buckets = if (wave.context[Jarvis.Companion.RealBullet]) {
-        wave.context[Jarvis.Companion.RealCluster].buckets(31)
+    val buckets = if (wave.context[RealBullet]) {
+        (wave.context.find(BulletCluster) ?: wave.context.find(RealCluster))?.buckets(31)
     } else {
-        wave.context[Jarvis.Companion.VirtualCluster].buckets(31)
+        wave.context.find(VirtualCluster)?.buckets(31)
+    }
+
+    if (buckets == null) {
+        color = Color.blue
+        drawCircle(wave.origin, wave.radius(time))
+        return
     }
 
     val max = buckets.maxOrNull()!!
@@ -133,21 +191,20 @@ fun Graphics2D.drawCluster(wave: Wave, time: Long) {
     val escapeAngle = wave.escapeAngle
     val direction = wave.snapshot.gfDirection
 
+    val middle = (buckets.size - 1) / 2
     for (i in buckets.indices) {
-        color = when (i) {
-            0 -> Color.red
-            buckets.lastIndex -> Color.green
-            else -> {
-                val green = (255 * (buckets[i] - min) / (max - min)).toInt()
-                Color(0, green, 255 - green)
-            }
+        val threat: Double = (buckets[i] - min) / (max - min)
+        color = when {
+            i < middle -> Color.red
+            i > middle -> Color.green
+            else -> Color.yellow
         }
 
         val gf = direction * i.toGuessFactor(buckets.size)
         val bearing = gf * if (gf < 0) escapeAngle.leftAngle else escapeAngle.rightAngle
         fillCircle(
             wave.origin.project(heading + bearing, radius),
-            if (wave.context[Jarvis.Companion.RealBullet]) 8 else 3
+            ((if (wave.context[RealBullet]) 4 else 2) * threat).toInt()
         )
     }
 }
@@ -173,27 +230,33 @@ fun Graphics2D.draw(
     drawProbe(location, wallProbe.perpendicular.backward(), 8)
 }
 
-fun Graphics2D.drawPath(source: Robot, target: Robot): Unit = runBlocking {
+fun Graphics2D.draw(robot: Robot, movement: Movement) = runBlocking {
+    robot.simulate(movement)
+        .take(25)
+        .collect { fillCircle(it, 4) }
+}
+
+fun Graphics2D.drawPath(source: Robot, target: Robot, moveDirection: Int) = runBlocking {
     val sourceLocation = source.latest.location
     val speed = Rules.getBulletSpeed(3.0)
 
-    run {
-        color = Color.green
-        val movement = WallSmoothMovement(
-            target.battleField,
-            OrbitMovement(source, 500.0, 1.0 * target.snapshot.moveDirection)
-        )
-        var time = 0
-        target.simulate(movement)
-            .takeWhile { sqr(time++ * speed) <= sourceLocation.r2(it) }
-            .collect { drawCircle(it, 2.0) }
-    }
+//    run {
+//        color = Color.green
+//        val movement = WallSmoothMovement(
+//            target.battleField,
+//            OrbitMovement(source, 500.0, 1.0 * moveDirection)
+//        )
+//        var time = 0
+//        target.simulate(movement)
+//            .takeWhile { sqr(time++ * speed) <= sourceLocation.r2(it) }
+//            .collect { drawCircle(it, 2.0) }
+//    }
 
     run {
         color = Color.red
         val movement = WallSmoothMovement(
             target.battleField,
-            OrbitMovement(source, 500.0, -1.0 * target.snapshot.moveDirection)
+            OrbitMovement(source, 500.0, -1.0 * moveDirection)
         )
         var time = 0
         target.simulate(movement)

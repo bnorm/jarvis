@@ -4,7 +4,6 @@ package bnorm.geo
 
 import bnorm.Vector
 import bnorm.project
-import bnorm.r
 import bnorm.r2
 import bnorm.sqr
 import bnorm.theta
@@ -15,9 +14,9 @@ import kotlin.math.sqrt
 infix fun Rectangle.intersect(circle: Circle): Set<Vector.Cartesian> {
     val points = mutableSetOf<Vector.Cartesian>()
 
-    // circle: (x - x0)^2 + (y - y0)^2 = r^2
-    // x = x0 +- sqrt(r^2 - (y - y0)^2)
-    // y = y0 +- sqrt(r^2 - (x - x0)^2)
+    // circle: (x - x0)² + (y - y0)² = r²
+    // x = x0 ± √(r² - (y - y0)²)
+    // y = y0 ± √(r² - (x - x0)²)
 
     val x0 = circle.center.x
     val y0 = circle.center.y
@@ -93,3 +92,75 @@ infix fun Circle.tangentPoints(p: Vector.Cartesian): Set<Vector.Cartesian> {
 
 inline infix fun Vector.Cartesian.tangentPoints(circle: Circle) =
     circle.tangentPoints(this)
+
+//
+
+fun Circle.intersectHorizontal(y: Double): Set<Vector.Cartesian> {
+    // circle: (x - x0)² + (y - y0)² = r²
+    // x = x0 ± √(r² - (y - y0)²)
+    val prime = radius * radius - sqr(y - center.y)
+    return when {
+        prime < 0.0 -> emptySet()
+        prime == 0.0 -> setOf(Vector.Cartesian(center.x, y))
+        else -> setOf(
+            Vector.Cartesian(center.x + sqrt(prime), y),
+            Vector.Cartesian(center.x - sqrt(prime), y),
+        )
+    }
+}
+
+fun Circle.intersectVertical(x: Double): Set<Vector.Cartesian> {
+    // circle: (x - x0)² + (y - y0)² = r²
+    // y = y0 ± √(r² - (x - x0)²)
+    val prime = radius * radius - sqr(x - center.x)
+    return when {
+        prime < 0.0 -> emptySet()
+        prime == 0.0 -> setOf(Vector.Cartesian(x, center.y))
+        else -> setOf(
+            Vector.Cartesian(x, center.y + sqrt(prime)),
+            Vector.Cartesian(x, center.y - sqrt(prime)),
+        )
+    }
+}
+
+infix fun Circle.intersect(line: Line): Set<Vector.Cartesian> {
+    if (line.vertical) { // Vertical
+        return intersectVertical(line.b)
+    }
+
+    // circle: (x - x0)² + (y - y0)² = r²
+    // line: y = m * x + b
+
+    // (x - x0)² + [m * x + (b - y0)]² = r²
+    // [x² + 2 * x * -x0 + x0²] + [(m * x)² + 2 * m * x * (b - y0) + (b - y0)²] = r²
+    // [m² + 1] * x² + [2 * -x0 + m * (b - y0)] * x + [x0² + (b - y0)² - r²] = 0
+
+    // quadratic: a * x² + b * x + c = 0
+    // x = (-b ± √(b² - 4 * a * c)) / (2 * a)
+
+    val slope = line.m
+    val elevation = line.b
+    val x0 = center.x
+    val y0 = center.y
+
+    val c = x0 * x0 + sqr(elevation - y0) - radius * radius
+    val b = 2 * (-x0 + slope * (elevation - y0)) // 2
+    val a = slope * slope + 1 // 2
+
+    val prime = sqr(b) - 4 * a * c
+    return when {
+        prime < 0.0 -> emptySet()
+        prime == 0.0 -> {
+            setOf(line.f(-b / (2 * a)))
+        }
+        else -> {
+            setOf(
+                line.f((-b + sqrt(prime)) / (2 * a)),
+                line.f((-b - sqrt(prime)) / (2 * a))
+            )
+        }
+    }
+}
+
+inline infix fun Line.intersect(circle: Circle) =
+    circle.intersect(this)

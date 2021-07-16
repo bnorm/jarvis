@@ -1,22 +1,22 @@
 package bnorm.parts.gun.virtual
 
 class WaveContext {
-    interface Feature<V : Any>
+    interface Key<V : Any>
 
-    private val map = mutableMapOf<Feature<*>, Any>()
+    private val map = mutableMapOf<Key<*>, Any>()
 
     @Suppress("UNCHECKED_CAST")
-    operator fun <V : Any> get(feature: Feature<V>): V {
-        return map[feature] as V
+    operator fun <V : Any> get(key: Key<V>): V {
+        return map[key] as V
     }
 
     @Suppress("UNCHECKED_CAST")
-    fun <V : Any> find(feature: Feature<V>): V? {
-        return map[feature] as V?
+    fun <V : Any> find(key: Key<V>): V? {
+        return map[key] as V?
     }
 
     @Suppress("UNCHECKED_CAST")
-    operator fun <V : Any> set(feature: Feature<V>, value: V) {
-        map[feature] = value
+    operator fun <V : Any> set(key: Key<V>, value: V) {
+        map[key] = value
     }
 }

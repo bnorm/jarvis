@@ -87,3 +87,9 @@ inline fun gauss(
     c: Double, // Standard Deviation
     x: Double
 ) = a / exp(sqr(b - x) / (2.0 * c * c))
+
+inline fun gauss(
+    a: Double, // Height
+    c: Double, // Standard Deviation
+    x: Double
+) = a / exp(sqr(x) / (2.0 * c * c))

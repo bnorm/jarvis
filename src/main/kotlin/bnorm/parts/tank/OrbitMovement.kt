@@ -2,6 +2,7 @@ package bnorm.parts.tank
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.r
 import bnorm.robot.Robot
 import bnorm.theta
 import robocode.util.Utils
@@ -18,7 +19,8 @@ class OrbitMovement(
     override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
         val heading = velocity.theta
         val theta = location.theta(target.latest.location)
-        val bearingOffset = PI / 2 - atan((abs(velocity.r) / 2) / radius)
+        val distance = location.r(target.latest.location)
+        val bearingOffset = (PI / 2) * (radius / distance).coerceIn(0.5, 1.5) - atan(abs(velocity.r / 2) / radius)
 
         val clockwise = theta - bearingOffset
         val counter = theta + bearingOffset
@@ -29,10 +31,11 @@ class OrbitMovement(
             return if (abs(b1) < abs(b2)) b1 else b2
         }
 
-        return if (sign(direction) < 0) {
-            Polar(closestBearing(heading + PI, clockwise, counter), -10 * TANK_MAX_SPEED)
+        val movement = sign(direction) * 10 * TANK_MAX_SPEED
+        return if (movement < 0.0) {
+            Polar(closestBearing(heading + PI, clockwise, counter), movement)
         } else {
-            Polar(closestBearing(heading, clockwise, counter), 10 * TANK_MAX_SPEED)
+            Polar(closestBearing(heading, clockwise, counter), movement)
         }
     }
 }

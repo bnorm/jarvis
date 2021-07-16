@@ -93,7 +93,7 @@ data class RobotSnapshot(
 
     @Transient
     var prev: RobotSnapshot? = null
-    override var guessFactor: Double = 0.0
+    override var guessFactor: Double = Double.NaN
 }
 
 fun RobotSnapshot.history() = generateSequence(this) { curr -> curr.prev }
@@ -135,13 +135,14 @@ fun normalize(value: Long): Double = 1.0 - 1.0 / (1.0 + value / 10.0)
 fun normalize(value: Double): Double = 1.0 - 1.0 / (1.0 + value / 10.0)
 fun normalize(min: Double, value: Double, max: Double): Double = (value - min) / (max - min)
 
-fun RobotService.robotSnapshot(
+fun robotSnapshot(
+    source: Robot,
     scan: RobotScan,
     prevSnapshot: RobotSnapshot?,
     activeWaveCount: Long = 0,
 ): RobotSnapshot {
-    val selfScan = self.latest
-    val battleField = self.battleField
+    val selfScan = source.latest
+    val battleField = source.battleField
     val prevScan = scan.prev?.takeIf { it.time == selfScan.time - 1 } ?: scan
     val prevVelocity = prevScan.velocity
 

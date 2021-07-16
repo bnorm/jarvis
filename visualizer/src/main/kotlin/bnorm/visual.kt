@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalPathApi::class)
+
 package bnorm
 
 import androidx.compose.desktop.Window
@@ -7,7 +9,6 @@ import androidx.compose.foundation.ScrollableColumn
 import androidx.compose.foundation.ScrollableRow
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.material.Slider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,37 +31,112 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import bnorm.debug.GuessFactorSnapshot
+import bnorm.kdtree.KdTree
+import bnorm.parts.gun.gauss
+import bnorm.parts.gun.toGuessFactor
 import bnorm.robot.RobotSnapshot
+import bnorm.ui.GuessFactorGraph
+import kotlinx.serialization.decodeFromString
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.useLines
 
-val dimensions = RobotSnapshot.DIMENSIONS.size
+val file = resource("snapshots-cx.mini.Cigaret 1.31TC.json")
 
 fun main() = Window(
     title = "Compose for Desktop",
     size = IntSize(800, 800)
 ) {
-    var snapshots by remember { mutableStateOf(listOf<RobotSnapshot>()) }
+    var snapshots by remember { mutableStateOf<List<GuessFactorSnapshot>?>(null) }
+    var tree by remember { mutableStateOf<KdTree<GuessFactorSnapshot>?>(null) }
+    var header by remember { mutableStateOf(listOf<String>()) }
     LaunchedEffect(Unit) {
-        val collect = mutableListOf<RobotSnapshot>()
-        resource("snapshots-pe.SandboxDT 1.91TC.json")
-            .snapshots { collect.add(it) }
-        snapshots = collect.apply { shuffle() }.subList(0, 1_000)
+        header = json.decodeFromString(file.useLines { it.first() })
+
+        val collect = mutableListOf<GuessFactorSnapshot>()
+        file.dSnapshots { collect.add(it) }
+
+        if (collect.isNotEmpty()) {
+            snapshots = collect
+
+            val dimensionScales = DoubleArray(collect.first().dimensions.size) { 1.0 }
+            val kdTree = KdTree<GuessFactorSnapshot>(dimensionScales) { it.dimensions }
+            for (snapshot in collect) {
+                kdTree.add(snapshot)
+            }
+            tree = kdTree
+        }
     }
-    ScrollPane(Modifier.background(Color.Black).padding(8.dp)) {
-        Row(Modifier, Arrangement.spacedBy(5.dp)) {
-            repeat(dimensions) { column ->
-                Column(Modifier, Arrangement.spacedBy(5.dp)) {
-                    repeat(dimensions - 1) { row ->
-                        Box(Modifier) {
-                            SnapshotGraph(snapshots, column, dimensions - row - 1)
-                        }
-                    }
+
+    var graph by remember { mutableStateOf<Collection<KdTree.Neighbor<GuessFactorSnapshot>>>(emptyList()) }
+    Row {
+        GuessFactorGraph(graph)
+        DimensionScales(
+            dimensions = header,
+            onValueChange = {
+                val tree = tree
+                if (tree != null) {
+                    graph = tree.neighbors(GuessFactorSnapshot(it.toDoubleArray(), 0.0), 50)
                 }
             }
+        )
+    }
+
+
+//    ScrollPane {
+//            Row(Modifier, Arrangement.spacedBy(5.dp)) {
+//                repeat(dimensions) { column ->
+//                    Column(Modifier, Arrangement.spacedBy(5.dp)) {
+//                        repeat(dimensions - 1) { row ->
+//                            Box(Modifier) {
+//                                SnapshotGraph(snapshots, column, dimensions - row - 1)
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+}
+
+@Composable
+fun DimensionScales(dimensions: List<String>, onValueChange: (List<Double>) -> Unit) {
+    var snapshot by remember(dimensions) { mutableStateOf(List(dimensions.size) { 0.0 }) }
+    Column {
+        for ((index, name) in dimensions.withIndex()) {
+            val value = snapshot[index]
+            DimensionScale(
+                name = name,
+                value = value,
+                onValueChange = {
+                    val copy = snapshot.toMutableList().apply { this[index] = it }
+                    snapshot = copy
+                    onValueChange(copy)
+                }
+            )
         }
+    }
+}
+
+@Composable
+fun DimensionScale(
+    name: String,
+    value: Double,
+    onValueChange: (Double) -> Unit,
+) {
+    Column {
+        Text("$name : $value")
+        // TODO graph distribution of snapshots for selected dimension
+        Slider(
+            value = value.toFloat(),
+            valueRange = -1.0f..1.0f,
+            onValueChange = { onValueChange(it.toDouble()) }
+        )
     }
 }
 
@@ -99,12 +176,13 @@ fun ScrollPane(
     }
 }
 
+
 @Composable
 fun SnapshotGraph(
     snapshots: List<RobotSnapshot>,
     column: Int,
     row: Int,
-    graphSize: Dp = 200.dp
+    graphSize: Dp = 200.dp,
 ) {
     val columnName = RobotSnapshot.DIMENSIONS[column].name
     val rowName = RobotSnapshot.DIMENSIONS[row].name
@@ -134,4 +212,17 @@ fun SnapshotGraph(
             }
         }
     }
+}
+
+fun Iterable<KdTree.Neighbor<GuessFactorSnapshot>>.buckets(bucketCount: Int): DoubleArray {
+    val buckets = DoubleArray(bucketCount)
+
+    for (b in buckets.indices) {
+        val gf = b.toGuessFactor(bucketCount)
+        for (point in this) {
+            buckets[b] += gauss(1.0 / point.dist, point.value.guessFactor, 0.1, gf)
+        }
+    }
+
+    return buckets
 }

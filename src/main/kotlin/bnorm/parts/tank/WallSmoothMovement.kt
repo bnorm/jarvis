@@ -1,8 +1,8 @@
 package bnorm.parts.tank
 
 import bnorm.Vector
+import bnorm.geo.AngleRange
 import bnorm.parts.BattleField
-import bnorm.signMul
 import robocode.Rules
 import robocode.util.Utils
 import kotlin.math.PI
@@ -21,8 +21,8 @@ class WallSmoothMovement(
             return (speed / 2) / tan(turn / 2)
         }
 
-        val TANK_MAX_SPEED_RADIUS = radius(TANK_MAX_SPEED)
-        const val SMOOTH_WALL_TANK_BUFFER = TANK_SIZE / 2 + 1
+        val TANK_MAX_RADIUS = radius(TANK_MAX_SPEED)
+        const val WALL_TANK_BUFFER = TANK_SIZE / 2 + 8
     }
 
     override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
@@ -34,80 +34,83 @@ class WallSmoothMovement(
         velocity: Vector.Polar,
         movement: Vector.Polar
     ): Vector.Polar {
-        // TODO will movement turn into the danger zone?
-
-        // Get movement heading
-        val heading = velocity.theta + if (velocity.r < 0) PI else 0.0
-
-        val xWallBearing: Double
+        val xWallAngle: Double
         val xWallDistance: Double
         if (2 * location.x > battleField.width) {
             // RIGHT
-            xWallBearing = Utils.normalRelativeAngle(heading - PI / 2)
-            xWallDistance = battleField.width - location.x
+            xWallAngle = PI / 2
+            xWallDistance = (battleField.width - location.x - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         } else {
             // LEFT
-            xWallBearing = Utils.normalRelativeAngle(heading - 3 * PI / 2)
-            xWallDistance = location.x
+            xWallAngle = 3 * PI / 2
+            xWallDistance = (location.x - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         }
 
         val yWallDistance: Double
-        val yWallBearing: Double
+        val yWallAngle: Double
         if (2 * location.y > battleField.height) {
             // TOP
-            yWallBearing = Utils.normalRelativeAngle(heading)
-            yWallDistance = battleField.height - location.y
+            yWallAngle = if (xWallAngle > PI) 2 * PI else 0.0
+            yWallDistance = (battleField.height - location.y - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         } else {
             // BOTTOM
-            yWallBearing = Utils.normalRelativeAngle(heading - PI)
-            yWallDistance = location.y
+            yWallAngle = PI
+            yWallDistance = (location.y - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         }
 
-        // If bearing is negative, need to turn left
-        // If bearing is positive, need to turn right
+        val heading = velocity.theta + if (velocity.r < 0.0) PI else 0.0
+        val xWallStick = TANK_MAX_RADIUS * (1 + abs(sin(heading - xWallAngle)))
+        val yWallStick = TANK_MAX_RADIUS * (1 + abs(sin(heading - yWallAngle)))
 
-        val xWallStick = (1 + abs(sin(xWallBearing))) * TANK_MAX_SPEED_RADIUS + SMOOTH_WALL_TANK_BUFFER
-        val yWallStick = (1 + abs(sin(yWallBearing))) * TANK_MAX_SPEED_RADIUS + SMOOTH_WALL_TANK_BUFFER
+        val xSmoothWall = xWallDistance < xWallStick
+        val ySmoothWall = yWallDistance < yWallStick
 
-        val smoothXWall = abs(xWallBearing) <= PI / 2 && xWallDistance < xWallStick
-        val smoothYWall = abs(yWallBearing) <= PI / 2 && yWallDistance < yWallStick
+        val leftAngle: Double
+        val rightAngle: Double
+        if (xSmoothWall && ySmoothWall) {
+            val xOpposite = (TANK_MAX_RADIUS - xWallDistance)
+            val xDangerBearing = asin(xOpposite / TANK_MAX_RADIUS)
 
-        return if (smoothXWall) {
-            if (smoothYWall) {
-                // Smooth X & Y wall
-                // TODO over correct and let velocity coerce fix it
-                val turnRate = 2 * Rules.getTurnRateRadians(velocity.r)
+            val yOpposite = (TANK_MAX_RADIUS - yWallDistance)
+            val yDangerBearing = asin(yOpposite / TANK_MAX_RADIUS)
 
-                if (xWallStick - xWallDistance > yWallStick - yWallDistance) {
-                    Vector.Polar(signMul(xWallBearing) * turnRate, movement.r)
-                } else {
-                    Vector.Polar(signMul(yWallBearing) * turnRate, movement.r)
-                }
+            if (xWallAngle < yWallAngle) {
+                // x wall is to the left
+                // y wall is to the right
+                leftAngle = xWallAngle - xDangerBearing
+                rightAngle = yWallAngle + yDangerBearing
             } else {
-                // Smooth X wall
-                // use x wall bearing to determine direction
-                val opposite = (TANK_MAX_SPEED_RADIUS + SMOOTH_WALL_TANK_BUFFER - xWallDistance)
-                    .coerceAtMost(TANK_MAX_SPEED_RADIUS)
-                val turn = asin(opposite / TANK_MAX_SPEED_RADIUS) - abs(xWallBearing)
-                if (turn > 0) {
-                    Vector.Polar(signMul(xWallBearing) * turn, movement.r)
-                } else {
-                    movement
-                }
+                // x wall is to the right
+                // y wall is to the left
+                leftAngle = yWallAngle - yDangerBearing
+                rightAngle = xWallAngle + xDangerBearing
             }
-        } else if (smoothYWall) {
-            // Smooth Y wall
-            // use y wall bearing to determine direction
-            val opposite = (TANK_MAX_SPEED_RADIUS + SMOOTH_WALL_TANK_BUFFER - yWallDistance)
-                .coerceAtMost(TANK_MAX_SPEED_RADIUS)
-            val turn = asin(opposite / TANK_MAX_SPEED_RADIUS) - abs(yWallBearing)
-            if (turn > 0) {
-                Vector.Polar(signMul(yWallBearing) * turn, movement.r)
-            } else {
-                movement
-            }
+        } else if (xSmoothWall && xWallDistance < TANK_MAX_RADIUS) {
+            val xOpposite = (TANK_MAX_RADIUS - xWallDistance)
+            val xDangerBearing = asin(xOpposite / TANK_MAX_RADIUS)
+
+            leftAngle = xWallAngle - xDangerBearing
+            rightAngle = xWallAngle + xDangerBearing
+        } else if (ySmoothWall && yWallDistance < TANK_MAX_RADIUS) {
+            val yOpposite = (TANK_MAX_RADIUS - yWallDistance)
+            val yDangerBearing = asin(yOpposite / TANK_MAX_RADIUS)
+
+            leftAngle = yWallAngle - yDangerBearing
+            rightAngle = yWallAngle + yDangerBearing
         } else {
-            movement
+            return movement
         }
+        val range = AngleRange(leftAngle, rightAngle)
+
+        if (heading + movement.theta in range) {
+            val leftBearing = Utils.normalRelativeAngle(leftAngle - heading)
+            val rightBearing = Utils.normalRelativeAngle(rightAngle - heading)
+            return if (abs(leftBearing) < abs(rightBearing)) {
+                Vector.Polar(leftBearing, movement.r)
+            } else {
+                Vector.Polar(rightBearing, movement.r)
+            }
+        }
+        return movement
     }
 }

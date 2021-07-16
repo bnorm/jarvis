@@ -2,6 +2,7 @@
 
 package bnorm
 
+import bnorm.debug.GuessFactorSnapshot
 import bnorm.kdtree.KdTree
 import bnorm.parts.gun.toGuessFactor
 import bnorm.robot.RobotScan
@@ -25,7 +26,7 @@ fun main() {
             doubleArrayOf(it.guessFactor)
         }
 
-        resource("snapshots-cx.mini.Cigaret 1.31TC.json").snapshots {
+        resource("snapshots-pe.SandboxDT 1.91TC.json").snapshots {
             tree.add(it)
             gfTree.add(it)
         }
@@ -71,7 +72,6 @@ fun blankSnapshot() = RobotSnapshot(
         location = Vector.Cartesian(0.0, 0.0),
         velocity = Vector.Polar(0.0, 0.0),
         energy = 0.0,
-        damage = 0.0,
         time = 0,
         interpolated = false
     ),
@@ -103,10 +103,19 @@ fun blankSnapshot() = RobotSnapshot(
 
 fun resource(path: String) = Paths.get(ClassLoader.getSystemResource(path).toURI())
 
+val json = Json { ignoreUnknownKeys = true }
+
 fun Path.snapshots(block: (RobotSnapshot) -> Unit) {
-    val json = Json { ignoreUnknownKeys = true }
     useLines { lines ->
         lines.forEach {
+            block(json.decodeFromString(it))
+        }
+    }
+}
+
+fun Path.dSnapshots(block: (GuessFactorSnapshot) -> Unit) {
+    useLines { lines ->
+        lines.drop(1).forEach {
             block(json.decodeFromString(it))
         }
     }

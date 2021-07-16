@@ -1,6 +1,8 @@
 package bnorm.robot
 
 import bnorm.parts.BattleField
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 typealias ScanListener = suspend (scan: RobotScan) -> Unit
 typealias DeathListener = suspend () -> Unit
@@ -23,21 +25,21 @@ class Robot constructor(
         }
     }
 
-    private val _history = ArrayDeque<RobotScan>(100_000)
     private val scanListeners = mutableListOf<ScanListener>()
     private val deathListeners = mutableListOf<DeathListener>()
 
-    val latest: RobotScan get() = _history[0]
+    private var _latest: RobotScan? = null
+    val latest: RobotScan get() = _latest!!
+
+    private val _snapshots = MutableSharedFlow<RobotScan>(replay = 1, extraBufferCapacity = 100_000)
+    val snapshots = _snapshots.asSharedFlow()
+
     val history: Sequence<RobotScan> get() = generateSequence(latest) { it.prev }
 
-    operator fun get(time: Long): RobotScan? {
-        val index = _history.binarySearchBy(time) { it.time }
-        return if (index >= 0) _history[index] else null
-    }
-
     suspend fun scan(scan: RobotScan) {
-        scan.prev = _history.firstOrNull()
-        _history.addFirst(scan)
+        scan.prev = _latest
+        _latest = scan
+        _snapshots.emit(scan)
         scanListeners.forEach { it.invoke(scan) }
     }
 
@@ -46,8 +48,8 @@ class Robot constructor(
     }
 
     suspend fun revive(scan: RobotScan) {
-        _history.clear()
-        _history.addFirst(scan)
+        _latest = scan
+        _snapshots.emit(scan)
         scanListeners.forEach { it.invoke(scan) }
     }
 

@@ -2,6 +2,7 @@
 
 package bnorm
 
+import robocode.util.Utils
 import kotlin.math.*
 
 fun signMul(n: Double): Double {
@@ -45,6 +46,12 @@ inline fun r(source: Vector, destination: Vector): Double =
 
 inline fun r(x: Double, y: Double, destination: Vector): Double =
     r(x, y, destination.x, destination.y)
+
+fun minBearing(heading: Double, h1: Double, h2: Double): Double {
+    val b1 = Utils.normalRelativeAngle(h1 - heading)
+    val b2 = Utils.normalRelativeAngle(h2 - heading)
+    return if (abs(b1) < abs(b2)) b1 else b2
+}
 
 fun Double.roundDecimals(decimals: Int): Double {
     var mul = 1.0

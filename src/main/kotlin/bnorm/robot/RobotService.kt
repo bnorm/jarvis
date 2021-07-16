@@ -4,7 +4,8 @@ import bnorm.parts.BattleField
 import bnorm.r2
 
 class RobotService(
-    private val block: suspend RobotService.(Robot) -> Unit
+    private val onSelf: suspend RobotService.(Robot) -> Unit,
+    private val onEnemy: suspend RobotService.(Robot) -> Unit,
 ) {
     private val _alive = mutableMapOf<String, Robot>()
     val alive: Collection<Robot> = _alive.values
@@ -32,7 +33,7 @@ class RobotService(
     suspend fun onScan(name: String, scan: RobotScan, battleField: BattleField) {
         when (val existing = _alive[name]) {
             null -> _alive[name] = dead[name]?.apply { revive(scan) } ?: run {
-                Robot.create(name, RobotContext(), battleField, scan).also { block(it) }
+                Robot.create(name, RobotContext(), battleField, scan).also { onEnemy(it) }
             }
             else -> existing.scan(scan) // TODO scan lag is > 1, interpolate?
         }
@@ -40,7 +41,7 @@ class RobotService(
 
     suspend fun onStatus(name: String, scan: RobotScan, battleField: BattleField) {
         if (_self == null) {
-            _self = Robot.create(name, RobotContext(), battleField, scan)
+            _self = Robot.create(name, RobotContext(), battleField, scan).also { onSelf(it) }
         } else {
             val self = _self!!
             if (self.latest.time > scan.time) {
@@ -69,7 +70,7 @@ class RobotService(
     }
 }
 
-fun RobotService.closest(): Robot? = alive.minByOrNull {
+fun RobotService.closest(): Robot? {
     val location = self.latest.location
-    it.latest.location.r2(location)
+    return alive.minByOrNull { it.latest.location.r2(location) }
 }

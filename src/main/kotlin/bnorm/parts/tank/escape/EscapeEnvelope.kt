@@ -13,16 +13,19 @@ import bnorm.r
 import bnorm.sqr
 import bnorm.theta
 import robocode.util.Utils
-import kotlin.math.abs
 import kotlin.math.sqrt
 
-data class EscapeAngle(
+data class EscapeEnvelope(
     val leftPoint: Vector.Cartesian,
     val leftAngle: Double,
     val rightPoint: Vector.Cartesian,
     val rightAngle: Double,
+    val source: Vector.Cartesian,
+    val target: Vector.Cartesian,
+    val speed: Double,
+    val circle: Circle,
 ) {
-    companion object : WaveContext.Feature<EscapeAngle>
+    companion object : WaveContext.Key<EscapeEnvelope>
 
     operator fun iterator(): Iterator<Vector.Cartesian> = iterator {
         yield(leftPoint)
@@ -30,7 +33,7 @@ data class EscapeAngle(
     }
 }
 
-val Wave.escapeAngle: EscapeAngle get() = context[EscapeAngle]
+val Wave.escapeAngle: EscapeEnvelope get() = context[EscapeEnvelope]
 
 fun escapeCircle(
     source: Vector.Cartesian,
@@ -49,9 +52,7 @@ fun escapeCircle(
     return circle
 }
 
-//  Iterative : 57.6us
-//  This      :  2.82us
-fun BattleField.escape(source: Vector.Cartesian, target: Vector.Cartesian, speed: Double): EscapeAngle {
+fun BattleField.escape(source: Vector.Cartesian, target: Vector.Cartesian, speed: Double): EscapeEnvelope {
     var leftPoint = target
     var leftAngle = 0.0
     var rightPoint = target
@@ -60,12 +61,16 @@ fun BattleField.escape(source: Vector.Cartesian, target: Vector.Cartesian, speed
     val angle = source.theta(target)
     fun assign(t: Vector.Cartesian) {
         val tAngle = Utils.normalRelativeAngle(source.theta(t) - angle)
-        if (tAngle < 0) {
-            leftPoint = t
-            leftAngle = abs(tAngle)
+        if (tAngle < 0.0) {
+            if (-tAngle > leftAngle) {
+                leftPoint = t
+                leftAngle = -tAngle
+            }
         } else {
-            rightPoint = t
-            rightAngle = tAngle
+            if (tAngle > rightAngle) {
+                rightPoint = t
+                rightAngle = tAngle
+            }
         }
     }
 
@@ -80,5 +85,5 @@ fun BattleField.escape(source: Vector.Cartesian, target: Vector.Cartesian, speed
         }
     }
 
-    return EscapeAngle(leftPoint, leftAngle, rightPoint, rightAngle)
+    return EscapeEnvelope(leftPoint, leftAngle, rightPoint, rightAngle, source, target, speed, circle)
 }
