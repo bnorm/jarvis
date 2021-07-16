@@ -2,8 +2,11 @@
 
 package bnorm
 
-import robocode.util.Utils
-import kotlin.math.*
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 fun signMul(n: Double): Double {
     return if (n < 0.0) -1.0 else 1.0
@@ -48,8 +51,8 @@ inline fun r(x: Double, y: Double, destination: Vector): Double =
     r(x, y, destination.x, destination.y)
 
 fun minBearing(heading: Double, h1: Double, h2: Double): Double {
-    val b1 = Utils.normalRelativeAngle(h1 - heading)
-    val b2 = Utils.normalRelativeAngle(h2 - heading)
+    val b1 = normalRelativeAngle(h1 - heading)
+    val b2 = normalRelativeAngle(h2 - heading)
     return if (abs(b1) < abs(b2)) b1 else b2
 }
 
@@ -57,6 +60,25 @@ fun Double.roundDecimals(decimals: Int): Double {
     var mul = 1.0
     repeat(decimals) { mul *= 10.0 }
     return (this * mul).roundToInt() / mul
+}
+
+fun normalRelativeAngle(angle: Double): Double {
+    val normal = angle % (2 * PI)
+    return when {
+        normal >= 0.0 -> when {
+            normal < PI -> normal
+            else -> normal - (2 * PI)
+        }
+        else -> when {
+            normal >= -PI -> normal
+            else -> normal + (2 * PI)
+        }
+    }
+}
+
+fun normalAbsoluteAngle(angle: Double): Double {
+    val normal = angle % (2 * PI)
+    return if (normal >= 0.0) normal else normal + (2 * PI)
 }
 
 fun rollingVariance(

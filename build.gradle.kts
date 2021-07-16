@@ -15,6 +15,7 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation("com.jakewharton.picnic:picnic:0.5.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")

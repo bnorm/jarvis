@@ -1,7 +1,7 @@
 package bnorm.geo
 
 import bnorm.Vector
-import robocode.util.Utils
+import bnorm.normalAbsoluteAngle
 import kotlin.math.PI
 import kotlin.math.tan
 
@@ -37,7 +37,7 @@ fun Line(p1: Vector.Cartesian, p2: Vector.Cartesian): Line {
 
 fun Line(p: Vector.Cartesian, angle: Double): Line {
     // Vertical line
-    val absolute = Utils.normalAbsoluteAngle(angle)
+    val absolute = normalAbsoluteAngle(angle)
     if (absolute % PI == 0.0) return Line(Double.NaN, p.x)
 
     // y = m * x + b

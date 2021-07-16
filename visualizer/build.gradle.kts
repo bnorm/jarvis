@@ -13,6 +13,7 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation(project(":"))
     implementation(compose.desktop.currentOs)
 
@@ -25,8 +26,9 @@ tasks.withType<KotlinCompile> {
     kotlinOptions {
         jvmTarget = "11"
         freeCompilerArgs += listOf(
+            "-Xopt-in=kotlin.ExperimentalStdlibApi",
             "-Xopt-in=kotlin.time.ExperimentalTime",
-            "-Xopt-in=kotlin.ExperimentalStdlibApi"
+            "-Xopt-in=kotlin.io.path.ExperimentalPathApi"
         )
     }
 }

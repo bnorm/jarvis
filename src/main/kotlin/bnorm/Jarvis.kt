@@ -226,7 +226,7 @@ open class Jarvis @JvmOverloads constructor(
                             is BulletHitEvent -> bulletHits[e.bullet.victim] = e.bullet.toSnapshot()
                             is HitByBulletEvent -> hitByBullets[e.bullet.name] = e.bullet.toSnapshot()
                             is ScannedRobotEvent -> launch(Computation) {
-                                trace("scan") {
+                                trace("events.scan") {
                                     val hitByBullet = hitByBullets.remove(e.name)
                                     val bulletHit = bulletHits.remove(e.name)
                                     robotService.onScan(e.name, e.toRobotScan(hitByBullet, bulletHit), battleField)
@@ -237,28 +237,34 @@ open class Jarvis @JvmOverloads constructor(
                 }
             }
 
-            trace("action") {
+            trace("parts") {
                 coroutineScope {
-                    radarStrategy.setMove()
+                    launch(Computation) {
+                        trace("parts.radar") {
+                            radarStrategy.setMove()
+                        }
+                    }
 
                     val target = robotService.closest()
                     if (target != null) {
                         if (movementEnabled) {
                             launch(Computation) {
-                                val movement = movementOne.getOrPut(target.name) {
-                                    WaveSurfMovement(robotService.self, target) {
-                                        val waves = target.attackWaves.waves.filter { it.context[RealBullet] }
-                                        waves.map { SurfableWave(it, it.context[BulletCluster]) }
+                                trace("parts.tank") {
+                                    val movement = movementOne.getOrPut(target.name) {
+                                        WaveSurfMovement(robotService.self, target) {
+                                            val waves = target.attackWaves.waves.filter { it.context[RealBullet] }
+                                            waves.map { SurfableWave(it, it.context[BulletCluster]) }
+                                        }
                                     }
-                                }
 
-                                trace("movement") { movement.move() }
+                                    movement.move()
+                                }
                             }
                         }
 
                         if (targetingEnabled) {
                             launch(Computation) {
-                                trace("targeting") {
+                                trace("parts.gun") {
                                     val power = pickPower(target)
                                     val prediction = trace("aiming") { target.guns.best.predict(power) }
                                     val bullet = fire(prediction, power)

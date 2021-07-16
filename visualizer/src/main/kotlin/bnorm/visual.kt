@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalPathApi::class)
-
 package bnorm
 
 import androidx.compose.desktop.Window

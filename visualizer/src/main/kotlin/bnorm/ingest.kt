@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalPathApi::class)
-
 package bnorm
 
 import bnorm.debug.GuessFactorSnapshot
@@ -14,7 +12,6 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.nio.file.Path
 import java.nio.file.Paths
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.useLines
 import kotlin.time.measureTime
 
@@ -101,7 +98,7 @@ fun blankSnapshot() = RobotSnapshot(
     activeWaveCount = 0
 )
 
-fun resource(path: String) = Paths.get(ClassLoader.getSystemResource(path).toURI())
+fun resource(path: String): Path = Paths.get(ClassLoader.getSystemResource(path).toURI())
 
 val json = Json { ignoreUnknownKeys = true }
 
