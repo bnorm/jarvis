@@ -2,10 +2,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.6.10"
-    kotlin("kapt") version "1.6.10"
+    kotlin("kapt") version "1.6.10" apply false
     kotlin("plugin.serialization") version "1.6.10"
     id("com.bnorm.robocode") version "0.1.1"
-    id("me.champeau.gradle.jmh") version "0.5.2"
 }
 
 version = "0.1"
@@ -23,9 +22,6 @@ dependencies {
     testImplementation(kotlin("test-junit5"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
-
-    jmh("org.openjdk.jmh:jmh-core:1.34")
-    kaptJmh("org.openjdk.jmh:jmh-generator-annprocess:1.34")
 }
 
 tasks.withType<KotlinCompile> {
@@ -67,12 +63,12 @@ robocode {
             version = project.version.toString()
             description = "Jarvis - Movement Only"
         }
+        register("Drone") {
+            classPath = "bnorm.Drone"
+            version = project.version.toString()
+            description = "Testing Drone"
+        }
     }
-}
-
-jmh {
-    jvmArgs.plusAssign(listOf("-Djmh.separateClasspathJAR=true"))
-    duplicateClassesStrategy = DuplicatesStrategy.WARN
 }
 
 /*
