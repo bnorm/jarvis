@@ -4,7 +4,6 @@ import bnorm.sqr
 import bnorm.rollingVariance
 import java.util.*
 import kotlin.collections.ArrayDeque
-import kotlin.collections.ArrayList
 
 class KdTree<T>(
     private val dimensionScales: DoubleArray,
@@ -34,40 +33,56 @@ class KdTree<T>(
         class Leaf<T>(
             dimensionsCount: Int,
             private val parentDimension: Int,
-            private val bucketSize: Int,
+            val bucket: Array<TreePoint<T>?>
         ) : Node<T>() {
-            val bucket = ArrayList<TreePoint<T>>(DEFAULT_BUCKET_SIZE + 10) // TODO actual array to avoid copy?
+            var bucketCount = 0
 
             private val means = DoubleArray(dimensionsCount) { 0.0 }
             private val variances = DoubleArray(dimensionsCount) { 0.0 }
 
             override fun add(value: TreePoint<T>): Node<T> {
-                bucket.add(value)
-                rollingVariance(bucket.size, means, variances, value.dimensions)
-                return if (bucket.size > DEFAULT_BUCKET_SIZE) split() else this
+                if (bucketCount == bucket.size) return split().add(value)
+
+                bucket[bucketCount] = value
+                bucketCount++
+                rollingVariance(bucketCount, means, variances, value.dimensions)
+                return this
             }
 
             private fun split(): Branch<T> {
                 val dimension = bestSplitDimension()
-                bucket.sortBy { it.dimensions[dimension] }
+                bucket.sortBy { it!!.dimensions[dimension] }
 
                 val middle = bucket.size / 2
-                val pivot = bucket[middle].dimensions[dimension]
+                val pivot = bucket[middle]!!.dimensions[dimension]
 
                 var up = middle
                 var down = middle
                 // TODO walk together to avoid excessively long walks in a single direction
-                while (up + 1 < bucket.size && bucket[up + 1].dimensions[dimension] == pivot) up++
-                while (down - 1 > 0 && bucket[down - 1].dimensions[dimension] == pivot) down--
+                while (up + 1 < bucket.size && bucket[up + 1]!!.dimensions[dimension] == pivot) up++
+                while (down - 1 > 0 && bucket[down - 1]!!.dimensions[dimension] == pivot) down--
                 val listSplit = if (up - middle > middle - down) down else up
 
-                val left = bucket.subList(0, listSplit)
-                val right = bucket.subList(listSplit, bucket.size)
+                val right = arrayOfNulls<TreePoint<T>>(bucket.size)
+                bucket.copyInto(right, 0, listSplit, bucket.size)
+
+                val left = bucket
+                left.fill(null, fromIndex = listSplit)
                 return Branch(
                     pivot,
                     dimension,
-                    Leaf<T>(variances.size, dimension, bucketSize).also { left.forEach(it::add) },
-                    Leaf<T>(variances.size, dimension, bucketSize).also { right.forEach(it::add) },
+                    Leaf(variances.size, dimension, left).also {
+                        it.bucketCount = listSplit
+                        for (i in 1..it.bucketCount) {
+                            rollingVariance(i, it.means, it.variances, it.bucket[i - 1]!!.dimensions)
+                        }
+                    },
+                    Leaf(variances.size, dimension, right).also {
+                        it.bucketCount = bucket.size - listSplit
+                        for (i in 1..it.bucketCount) {
+                            rollingVariance(i, it.means, it.variances, it.bucket[i - 1]!!.dimensions)
+                        }
+                    },
                 )
             }
 
@@ -110,7 +125,7 @@ class KdTree<T>(
         }
     }
 
-    private var root: Node<T> = Node.Leaf(dimensionScales.size, -1, bucketSize)
+    private var root: Node<T> = Node.Leaf(dimensionScales.size, -1, arrayOfNulls(bucketSize))
 
     fun add(value: T) {
         val neighbor = TreePoint(value, dimensionsFunction(value))
@@ -137,7 +152,8 @@ class KdTree<T>(
         while (stack.isNotEmpty()) {
             when (val node = stack.removeLast()) {
                 is Node.Leaf -> {
-                    for (value in node.bucket) {
+                    for (i in 0 until node.bucketCount) {
+                        val value = node.bucket[i]!!
                         value.dist = dist(pointDimensions, value.dimensions)
                         if (heap.size < size || value.dist < heap.peek().dist) {
                             if (heap.size >= size) heap.poll()
@@ -181,10 +197,11 @@ class KdTree<T>(
             while (true) {
                 node = when (node) {
                     is Node.Leaf -> {
-                        for (value in node.bucket) {
+                        for (i in 0 until node.bucketCount) {
+                            val value = node.bucket[i]!!
                             value.dist = dist(pointDimensions, value.dimensions)
+                            queue.add(value)
                         }
-                        queue.addAll(node.bucket)
                         return
                     }
                     is Node.Branch -> {
