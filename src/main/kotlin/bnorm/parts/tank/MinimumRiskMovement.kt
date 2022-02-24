@@ -2,6 +2,8 @@ package bnorm.parts.tank
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.draw.Debug
+import bnorm.draw.DebugKey
 import bnorm.fillCircle
 import bnorm.parts.BattleField
 import bnorm.parts.contains
@@ -11,7 +13,6 @@ import bnorm.robot.RobotScan
 import bnorm.sqr
 import bnorm.theta
 import java.awt.Color
-import java.awt.Graphics2D
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -27,40 +28,8 @@ class MinimumRiskMovement(
         const val angleSection = PI * 2 / angleValues
     }
 
-    var destination: Vector.Cartesian? = null
-    var previous: Vector.Cartesian? = null
-
-    fun draw(
-        g: Graphics2D,
-        location: Vector.Cartesian,
-    ) {
-        destination?.let {
-            g.color = Color.blue
-            g.fillCircle(it, 8)
-        }
-        previous?.let {
-            g.color = Color.red
-            g.fillCircle(it, 8)
-        }
-
-        val scans = aliveRobots.map { it.latest }
-        val closest = scans.minByOrNull { location.r2(it.location) }
-        if (closest != null) {
-            var min = Double.MAX_VALUE
-            var max = Double.MIN_VALUE
-            val points = possibleDestinations(location, closest).map {
-                val risk = risk(location, it, scans)
-                min = minOf(risk, min)
-                max = maxOf(risk, max)
-                risk to it
-            }.toList()
-            for ((risk, point) in points) {
-                val red = 255 * (risk - min) / (max - min)
-                g.color = Color(red.toInt(), 255 - red.toInt(), 0)
-                g.fillCircle(point, 8)
-            }
-        }
-    }
+    private var destination: Vector.Cartesian? = null
+    private var previous: Vector.Cartesian? = null
 
     override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
         val scans = aliveRobots.map { it.latest }
@@ -68,7 +37,15 @@ class MinimumRiskMovement(
 
         if (closest != null) {
             var destination = this.destination
-            val possible = possibleDestinations(location, closest).minByOrNull { risk(location, it, scans) }!!
+            var min = Double.MAX_VALUE
+            var max = Double.MIN_VALUE
+            val points = possibleDestinations(location, closest).map { point ->
+                val risk = risk(location, point, scans)
+                min = minOf(risk, min)
+                max = maxOf(risk, max)
+                risk to point
+            }.toList()
+            val (_, possible) = points.minByOrNull { (risk, _) -> risk }!!
             if (destination == null
                 || location.r2(destination) < sqr(TANK_SIZE / 2)
                 || risk(location, destination, scans) * 0.8 > risk(location, possible, scans)
@@ -77,6 +54,21 @@ class MinimumRiskMovement(
             }
             if (this.destination != destination) this.previous = location
             this.destination = destination
+
+            Debug.onDraw(DebugKey.MinimumRiskMovement) {
+                color = Color.BLUE
+                fillCircle(destination, 8)
+                previous?.let {
+                    color = Color.RED
+                    fillCircle(it, 8)
+                }
+                for ((risk, point) in points) {
+                    val red = 255 * (risk - min) / (max - min)
+                    color = Color(red.toInt(), 255 - red.toInt(), 0)
+                    fillCircle(point, 8)
+                }
+            }
+
             return moveTo(location, velocity, destination)
         } else {
             return Polar(0.0, 0.0)

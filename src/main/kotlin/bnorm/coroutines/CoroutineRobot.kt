@@ -1,75 +1,60 @@
 package bnorm.coroutines
 
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import robocode.AdvancedRobot
-import robocode.BulletHitBulletEvent
-import robocode.BulletHitEvent
-import robocode.DeathEvent
-import robocode.Event
-import robocode.HitByBulletEvent
-import robocode.RobotDeathEvent
-import robocode.RoundEndedEvent
-import robocode.ScannedRobotEvent
-import robocode.StatusEvent
-import robocode.WinEvent
+import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.thread
-
-typealias RobotTurn = suspend (events: Flow<Event>) -> Unit
+import kotlin.coroutines.CoroutineContext
 
 abstract class CoroutineRobot : AdvancedRobot() {
-    // Better: Executors.newFixedThreadPool(4).asCoroutineDispatcher()
-    // But throws a RuntimePermission exception on executor shutdown
-    private val _computation = QueueCoroutineDispatcher()
+    private val _computation = QueueCoroutineDispatcher(4)
     val Computation: CoroutineDispatcher get() = _computation
-    private val threads = List(4) {
-        thread(name = "Computation $it") {
-            _computation.execute()
-        }
-    }
 
     private lateinit var _main: CoroutineDispatcher
     val Main: CoroutineDispatcher get() = _main
 
-    final override fun run() = runBlocking {
-        _main = coroutineContext[CoroutineDispatcher]!!
-
-        val eventFlow = flow<Event> {
-            var event = events.tryReceive().getOrNull()
-            while (event != null) {
-                emit(event)
-                event = events.tryReceive().getOrNull()
-            }
-        }
-
+    final override fun run() {
         try {
-            val turn = init()
-            while (true) {
-                turn.invoke(eventFlow)
-                execute()
+            runBlocking {
+                _main = coroutineContext[CoroutineDispatcher]!!
+                coroutineRun()
             }
         } finally {
-            _computation.close()
+            _computation.shutdown()
         }
     }
 
-    abstract suspend fun init(): RobotTurn
+    abstract suspend fun coroutineRun()
 
-    private val events = Channel<Event>(capacity = Channel.UNLIMITED)
-    private fun add(event: Event) {
-        events.trySend(event)
+    private class QueueCoroutineDispatcher(threadCount: Int) : CoroutineDispatcher() {
+        companion object {
+            private val POISON = Runnable {}
+        }
+        private val queue = LinkedBlockingQueue<Runnable>()
+        private val threads = List(threadCount) {
+            thread(name = "Computation $it") {
+                try {
+                    while (true) {
+                        val task = queue.take()
+                        if (task === POISON) break
+                        task.run()
+                    }
+                } catch (ignore: InterruptedException) {
+                    // ignore
+                }
+            }
+        }
+
+        override fun dispatch(context: CoroutineContext, block: Runnable) {
+            queue.put(block)
+        }
+
+        fun shutdown() {
+            repeat(threads.size) {
+                // poison the queue once for each thread
+                queue.put(POISON)
+            }
+        }
     }
-
-    override fun onStatus(event: StatusEvent) = add(event)
-    override fun onScannedRobot(event: ScannedRobotEvent) = add(event)
-    override fun onRobotDeath(event: RobotDeathEvent) = add(event)
-    override fun onBulletHit(event: BulletHitEvent) = add(event)
-    override fun onHitByBullet(event: HitByBulletEvent) = add(event)
-    override fun onBulletHitBullet(event: BulletHitBulletEvent) = add(event)
-    override fun onWin(event: WinEvent) = add(event)
-    override fun onDeath(event: DeathEvent) = add(event)
-    override fun onRoundEnded(event: RoundEndedEvent) = add(event)
 }

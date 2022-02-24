@@ -63,11 +63,6 @@ robocode {
             version = project.version.toString()
             description = "Jarvis - Movement Only"
         }
-        register("Drone") {
-            classPath = "bnorm.Drone"
-            version = project.version.toString()
-            description = "Testing Drone"
-        }
     }
 }
 

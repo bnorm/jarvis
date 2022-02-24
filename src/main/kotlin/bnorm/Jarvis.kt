@@ -1,6 +1,6 @@
 package bnorm
 
-import bnorm.coroutines.CoroutineRobot
+import bnorm.coroutines.MyCoroutineRobot
 import bnorm.coroutines.RobotTurn
 import bnorm.debug.GuessFactorSnapshot
 import bnorm.kdtree.KdTree
@@ -30,7 +30,17 @@ import bnorm.parts.tank.WaveSurfMovement
 import bnorm.parts.tank.escape.EscapeEnvelope
 import bnorm.parts.tank.escape.escape
 import bnorm.parts.tank.escape.escapeAngle
-import bnorm.robot.*
+import bnorm.robot.AttackSnapshots
+import bnorm.robot.Robot
+import bnorm.robot.RobotScan
+import bnorm.robot.RobotService
+import bnorm.robot.RobotSnapshot
+import bnorm.robot.RobotSnapshots
+import bnorm.robot.attackSnapshot
+import bnorm.robot.closest
+import bnorm.robot.memorized
+import bnorm.robot.robotSnapshot
+import bnorm.robot.snapshot
 import bnorm.robot.snapshot.BulletSnapshot
 import bnorm.robot.snapshot.toSnapshot
 import com.jakewharton.picnic.BorderStyle
@@ -39,12 +49,12 @@ import com.jakewharton.picnic.table
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import robocode.AdvancedRobot
 import robocode.Bullet
 import robocode.BulletHitBulletEvent
 import robocode.BulletHitEvent
@@ -59,7 +69,11 @@ import robocode.util.Utils
 import java.awt.Color
 import java.awt.Graphics2D
 import java.io.BufferedWriter
-import kotlin.math.*
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.asin
+import kotlin.math.cos
+import kotlin.math.sin
 
 object RealBullet : WaveContext.Key<Boolean>
 object VirtualCluster : WaveContext.Key<Collection<KdTree.Neighbor<RobotSnapshot>>>
@@ -70,13 +84,13 @@ object WaveHeading : WaveContext.Key<Double>
 // Movement only version of Jarvis
 class JarvisM : Jarvis(targetingEnabled = false)
 
-// Targeting Only version of Jarvis
+// Targeting only version of Jarvis
 class JarvisT : Jarvis(movementEnabled = false)
 
 open class Jarvis @JvmOverloads constructor(
     private val targetingEnabled: Boolean = true,
     private val movementEnabled: Boolean = true,
-) : CoroutineRobot() {
+) : MyCoroutineRobot() {
     companion object {
         private val robotService = RobotService(
             onSelf = { robot ->
@@ -188,7 +202,7 @@ open class Jarvis @JvmOverloads constructor(
     override suspend fun init(): RobotTurn {
         GlobalScope.launch(Computation) { exportSnapshots(snapshotChannel) }
 
-        val battleField = BattleField(battleFieldWidth, battleFieldHeight)
+        val battleField = BattleField()
         val movementMelee = MinimumRiskMovement(battleField, robotService.alive)
 
         val radar = Radar(this)
@@ -216,7 +230,12 @@ open class Jarvis @JvmOverloads constructor(
                     val hitByBullets = mutableMapOf<String, BulletSnapshot>()
                     events.collect { e ->
                         when (e) {
-                            is RoundEndedEvent -> robotService.onRoundEnd()
+                            is RoundEndedEvent -> {
+                                robotService.onRoundEnd()
+
+                                printVirtualGuns()
+                                printTimings()
+                            }
                             is StatusEvent -> {
                                 robotService.onStatus(name, e.toRobotScan(), battleField)
                             }
@@ -229,7 +248,11 @@ open class Jarvis @JvmOverloads constructor(
                                 trace("events.scan") {
                                     val hitByBullet = hitByBullets.remove(e.name)
                                     val bulletHit = bulletHits.remove(e.name)
-                                    robotService.onScan(e.name, e.toRobotScan(hitByBullet, bulletHit), battleField)
+                                    robotService.onScan(
+                                        e.name,
+                                        e.toRobotScan(this@Jarvis, hitByBullet, bulletHit),
+                                        battleField
+                                    )
                                 }
                             }
                         }
@@ -309,12 +332,6 @@ open class Jarvis @JvmOverloads constructor(
 
     override fun onSkippedTurn(event: SkippedTurnEvent) {
         println("SKIPPED! ${event.skippedTurn} ${time}")
-    }
-
-    override fun onRoundEnded(event: RoundEndedEvent) {
-        super.onRoundEnded(event)
-        printVirtualGuns()
-        printTimings()
     }
 
     private fun printTimings() {
@@ -489,32 +506,6 @@ open class Jarvis @JvmOverloads constructor(
 //            g.drawCluster(target.latest, neighbors)
 //        }
     }
-
-    private fun ScannedRobotEvent.toRobotScan(
-        bulletHit: BulletSnapshot? = null,
-        hitByBullet: BulletSnapshot? = null,
-    ): RobotScan {
-        val angle = this@Jarvis.headingRadians + bearingRadians
-        return RobotScan(
-            location = Cartesian(x + sin(angle) * distance, y + cos(angle) * distance),
-            velocity = Polar(headingRadians, velocity),
-            energy = energy,
-            time = time,
-            interpolated = false,
-            bulletHit = bulletHit,
-            hitByBullet = hitByBullet,
-        )
-    }
-
-    private fun StatusEvent.toRobotScan(): RobotScan {
-        return RobotScan(
-            location = Cartesian(status.x, status.y),
-            velocity = Polar(status.headingRadians, status.velocity),
-            energy = status.energy,
-            time = status.time,
-            interpolated = false,
-        )
-    }
 }
 
 val BulletHitEvent.damage: Double get() = Rules.getBulletDamage(bullet.power)
@@ -531,6 +522,43 @@ fun Wave.guessFactor(location: Vector.Cartesian, waveHeading: Double = context[W
 fun Wave.guessFactor(bearing: Double): Double {
     val escapeAngle = if (bearing < 0) escapeAngle.leftAngle else escapeAngle.rightAngle
     return (snapshot.gfDirection * bearing / escapeAngle).coerceIn(-1.0, 1.0)
+}
+
+fun robocode.AdvancedRobot.toRobotScan(): RobotScan {
+    return RobotScan(
+        location = Cartesian(x, y),
+        velocity = Polar(headingRadians, velocity),
+        energy = energy,
+        time = time,
+        interpolated = false,
+    )
+}
+
+fun StatusEvent.toRobotScan(): RobotScan {
+    return RobotScan(
+        location = Cartesian(status.x, status.y),
+        velocity = Polar(status.headingRadians, status.velocity),
+        energy = status.energy,
+        time = status.time,
+        interpolated = false,
+    )
+}
+
+fun ScannedRobotEvent.toRobotScan(
+    robot: AdvancedRobot,
+    bulletHit: BulletSnapshot? = null,
+    hitByBullet: BulletSnapshot? = null,
+): RobotScan {
+    val angle = robot.headingRadians + bearingRadians
+    return RobotScan(
+        location = Cartesian(robot.x + sin(angle) * distance, robot.y + cos(angle) * distance),
+        velocity = Polar(headingRadians, velocity),
+        energy = energy,
+        time = time,
+        interpolated = false,
+        bulletHit = bulletHit,
+        hitByBullet = hitByBullet,
+    )
 }
 
 private fun trainDimensionScales(

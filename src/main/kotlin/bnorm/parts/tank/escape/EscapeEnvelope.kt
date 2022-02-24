@@ -42,14 +42,13 @@ fun escapeCircle(
 ): Circle {
     // https://robowiki.net/wiki/Escape_Circle
     val k = 1.0 / (sqr(speed / TANK_MAX_SPEED) - 1.0)
-    val circle = Circle(
+    return Circle(
         center = Vector.Cartesian(
             source.x + (1 + k) * (target.x - source.x),
             source.y + (1 + k) * (target.y - source.y)
         ),
         radius = source.r(target) * sqrt(k * k + k)
     )
-    return circle
 }
 
 fun BattleField.escape(source: Vector.Cartesian, target: Vector.Cartesian, speed: Double): EscapeEnvelope {

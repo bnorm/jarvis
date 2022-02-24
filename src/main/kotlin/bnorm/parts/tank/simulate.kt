@@ -1,7 +1,9 @@
 package bnorm.parts.tank
 
 import bnorm.Vector
+import bnorm.geo.Segment
 import bnorm.geo.contains
+import bnorm.geo.intersect
 import bnorm.parts.BattleField
 import bnorm.robot.Robot
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +18,8 @@ fun BattleField.simulate(
     velocity: Vector.Polar,
     movement: Movement,
 ): Flow<Vector.Cartesian> {
+    // https://robowiki.net/wiki/Robocode/Game_Physics#Robocode_processing_loop
+
     val battleField = this
     return flow {
         var location = location
@@ -23,13 +27,16 @@ fun BattleField.simulate(
         while (true) {
             val move = movement.invoke(location, velocity)
             val v = simulateVelocity(velocity, move.theta, move.r)
-            location += v
-//            if (location !in battleField.movable) {
-//                location = Vector.Cartesian(
-//                    location.x.coerceIn(battleField.movable.xRange),
-//                    location.y.coerceIn(battleField.movable.yRange),
-//                )
-//            }
+            val next = location + v
+            location = if (next !in battleField.movable) {
+                battleField.movable.intersect(Segment(location, next)).singleOrNull()
+                    ?: Vector.Cartesian(
+                        next.x.coerceIn(battleField.movable.xRange),
+                        next.y.coerceIn(battleField.movable.yRange),
+                    )
+            } else {
+                next
+            }
             emit(location)
             velocity = v
         }

@@ -5,6 +5,7 @@ import bnorm.Vector
 import bnorm.geo.Rectangle
 import bnorm.parts.tank.TANK_SIZE
 import bnorm.r
+import robocode.AdvancedRobot
 
 data class BattleField(
     val width: Double,
@@ -13,6 +14,8 @@ data class BattleField(
     val diagonal = r(0.0, 0.0, width, height)
     val movable = Rectangle(Cartesian(width / 2, height / 2), width - TANK_SIZE, height - TANK_SIZE)
 }
+
+fun AdvancedRobot.BattleField() = BattleField(battleFieldWidth, battleFieldHeight)
 
 fun BattleField.contains(x: Double, y: Double): Boolean =
     x in 0.0..width && y in 0.0..height

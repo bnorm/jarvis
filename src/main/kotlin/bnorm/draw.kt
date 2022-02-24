@@ -15,6 +15,8 @@ import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.radius
 import bnorm.parts.tank.Movement
 import bnorm.parts.tank.OrbitMovement
+import bnorm.parts.tank.TANK_MAX_SPEED
+import bnorm.parts.tank.TANK_SIZE
 import bnorm.parts.tank.WallSmoothMovement
 import bnorm.parts.tank.escape.EscapeEnvelope
 import bnorm.parts.tank.escape.escapeAngle
@@ -63,22 +65,22 @@ fun Graphics2D.drawProbe(location: Vector.Cartesian, direction: Vector.Polar, di
 }
 
 fun Graphics2D.drawWave(self: RobotScan, wave: Wave, time: Long) {
-//    color = Color.blue
-//    val radius = wave.radius(time)
-//    drawCircle(wave.origin, radius)
-//
-//    color = Color.yellow
-//    val heading = theta(wave.origin, wave.value.scan.location)
-//    val escapeAngle = wave.escapeAngle(TANK_MAX_SPEED)
-//    drawLine(wave.origin, wave.origin + Polar(heading - escapeAngle, radius))
-//    drawLine(wave.origin, wave.origin + Polar(heading + escapeAngle, radius))
-//
+    color = Color.blue
+    val radius = wave.radius(time)
+    drawCircle(wave.origin, radius)
+
+    color = Color.yellow
+    val heading = wave.context[WaveHeading]
+    val escapeEnvelope = wave.context[EscapeEnvelope]
+    drawLine(wave.origin, wave.origin + Polar(heading - escapeEnvelope.leftAngle, radius))
+    drawLine(wave.origin, wave.origin + Polar(heading + escapeEnvelope.rightAngle, radius))
+
 //    color = Color.red
 //    val location = wave.origin + Polar(heading, radius)
 //    drawCircle(location, TANK_SIZE / 2)
 //    drawLine(location, location + wave.value.scan.velocity)
 
-    drawCluster(wave, time)
+//    drawCluster(wave, time)
 }
 
 fun Graphics2D.drawBullets(gun: VirtualGun, time: Long) {
@@ -129,10 +131,7 @@ fun Graphics2D.draw(
     direction: Int = 1,
 ) {
     color = Color.blue
-    draw(envelope.circle)
-    for (p in envelope) {
-        drawLine(envelope.source, p)
-    }
+    draw(envelope)
 
     if (buckets == null) {
         color = Color.red
@@ -165,6 +164,13 @@ fun Graphics2D.draw(
                 drawLine(intersection[0], intersection[1])
             }
         }
+    }
+}
+
+fun Graphics2D.draw(envelope: EscapeEnvelope) {
+    draw(envelope.circle)
+    for (p in envelope) {
+        drawLine(envelope.source, p)
     }
 }
 

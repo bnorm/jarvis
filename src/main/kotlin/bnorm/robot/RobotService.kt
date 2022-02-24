@@ -2,6 +2,8 @@ package bnorm.robot
 
 import bnorm.parts.BattleField
 import bnorm.r2
+import bnorm.robot.interp.RobotLink
+import bnorm.robot.interp.solve
 
 class RobotService(
     private val onSelf: suspend RobotService.(Robot) -> Unit,
@@ -35,7 +37,29 @@ class RobotService(
             null -> _alive[name] = dead[name]?.apply { revive(scan) } ?: run {
                 Robot.create(name, RobotContext(), battleField, scan).also { onEnemy(it) }
             }
-            else -> existing.scan(scan) // TODO scan lag is > 1, interpolate?
+            else -> {
+                val lag = scan.time - existing.latest.time
+                if (lag > 1) {
+                    val start = existing.latest
+                    val end = scan
+
+                    val chain = sequence {
+                        yield(RobotLink(start.location, start.velocity))
+                        repeat((lag - 1).toInt()) {
+                            yield(RobotLink(start.location, start.velocity))
+                        }
+                        yield(RobotLink(end.location, end.velocity))
+                    }.toList()
+
+                    val solution = chain.solve()
+
+                    for (i in 1..solution.size - 2) {
+                        val link = solution[i]
+                        existing.scan(RobotScan(link.location, link.velocity, start.energy, start.time + i, true, null, null))
+                    }
+                }
+                existing.scan(scan)
+            }
         }
     }
 

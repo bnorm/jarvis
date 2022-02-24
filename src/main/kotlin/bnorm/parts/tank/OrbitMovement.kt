@@ -2,10 +2,16 @@ package bnorm.parts.tank
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.draw.Debug
+import bnorm.draw.DebugKey
+import bnorm.drawCircle
+import bnorm.drawProbe
+import bnorm.fillCircle
+import bnorm.minBearing
 import bnorm.r
 import bnorm.robot.Robot
 import bnorm.theta
-import robocode.util.Utils
+import java.awt.Color
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan
@@ -17,25 +23,26 @@ class OrbitMovement(
     private val direction: Double
 ) : Movement {
     override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
-        val heading = velocity.theta
-        val theta = location.theta(target.latest.location)
-        val distance = location.r(target.latest.location)
-        val bearingOffset = (PI / 2) * (radius / distance).coerceIn(0.5, 1.5) - atan(abs(velocity.r / 2) / radius)
+        val targetLocation = target.latest.location
+        val theta = location.theta(targetLocation)
+        val distance = location.r(targetLocation)
+        val bearingOffset = (PI / 2) * (radius / distance).coerceIn(0.75, 1.25) - atan(abs(velocity.r / 2) / radius)
 
         val clockwise = theta - bearingOffset
         val counter = theta + bearingOffset
 
-        fun closestBearing(heading: Double, h1: Double, h2: Double): Double {
-            val b1 = Utils.normalRelativeAngle(h1 - heading)
-            val b2 = Utils.normalRelativeAngle(h2 - heading)
-            return if (abs(b1) < abs(b2)) b1 else b2
+        val movement = sign(direction) * 10 * TANK_MAX_SPEED
+        val heading = velocity.theta + if (movement < 0.0) PI else 0.0
+        val bearing = minBearing(heading, clockwise, counter)
+
+        Debug.onDraw(DebugKey.OrbitMovement) {
+            color = Color.BLUE
+            fillCircle(targetLocation, 8)
+            drawCircle(targetLocation, radius)
+            drawProbe(location, Polar(clockwise, movement))
+            drawProbe(location, Polar(counter, movement))
         }
 
-        val movement = sign(direction) * 10 * TANK_MAX_SPEED
-        return if (movement < 0.0) {
-            Polar(closestBearing(heading + PI, clockwise, counter), movement)
-        } else {
-            Polar(closestBearing(heading, clockwise, counter), movement)
-        }
+        return Polar(bearing, movement)
     }
 }

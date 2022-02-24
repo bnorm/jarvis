@@ -1,10 +1,17 @@
 package bnorm.parts.tank
 
+import bnorm.Polar
 import bnorm.Vector
+import bnorm.draw.Debug
+import bnorm.draw.DebugKey
+import bnorm.drawCircle
+import bnorm.drawLine
+import bnorm.drawProbe
 import bnorm.geo.AngleRange
+import bnorm.minBearing
 import bnorm.parts.BattleField
 import robocode.Rules
-import robocode.util.Utils
+import java.awt.Color
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.asin
@@ -22,7 +29,7 @@ class WallSmoothMovement(
         }
 
         val TANK_MAX_RADIUS = radius(TANK_MAX_SPEED)
-        const val WALL_TANK_BUFFER = TANK_SIZE / 2 + 8
+        const val WALL_TANK_BUFFER = TANK_SIZE / 2 + 1
     }
 
     override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
@@ -34,6 +41,8 @@ class WallSmoothMovement(
         velocity: Vector.Polar,
         movement: Vector.Polar
     ): Vector.Polar {
+        val location = location + velocity // Turning happens after movement
+
         val xWallAngle: Double
         val xWallDistance: Double
         if (2 * location.x > battleField.width) {
@@ -64,6 +73,18 @@ class WallSmoothMovement(
 
         val xSmoothWall = xWallDistance < xWallStick
         val ySmoothWall = yWallDistance < yWallStick
+
+        Debug.onDraw(DebugKey.WallSmoothMovement) {
+            color = Color.BLUE
+            drawLine(location, Polar(heading, velocity.r * 10))
+            color = Color.YELLOW
+            drawCircle(location + Polar(xWallAngle, xWallDistance), radius = 4.0)
+            drawCircle(location + Polar(yWallAngle, yWallDistance), radius = 4.0)
+            color = if (xSmoothWall) Color.RED else Color.GREEN
+            drawProbe(location, Polar(xWallAngle, xWallStick), diameter = 8)
+            color = if (ySmoothWall) Color.RED else Color.GREEN
+            drawProbe(location, Polar(yWallAngle, yWallStick), diameter = 8)
+        }
 
         val leftAngle: Double
         val rightAngle: Double
@@ -100,17 +121,16 @@ class WallSmoothMovement(
         } else {
             return movement
         }
-        val range = AngleRange(leftAngle, rightAngle)
 
-        if (heading + movement.theta in range) {
-            val leftBearing = Utils.normalRelativeAngle(leftAngle - heading)
-            val rightBearing = Utils.normalRelativeAngle(rightAngle - heading)
-            return if (abs(leftBearing) < abs(rightBearing)) {
-                Vector.Polar(leftBearing, movement.r)
-            } else {
-                Vector.Polar(rightBearing, movement.r)
-            }
+        Debug.onDraw(DebugKey.WallSmoothMovement) {
+            color = Color.YELLOW
+            val length = maxOf(xWallStick, yWallStick)
+            drawProbe(location, Polar(leftAngle, length))
+            drawProbe(location, Polar(rightAngle, length))
         }
-        return movement
+
+        val range = AngleRange(leftAngle, rightAngle)
+        return if (heading + movement.theta !in range) movement
+        else Vector.Polar(minBearing(heading, leftAngle, rightAngle), movement.r)
     }
 }
