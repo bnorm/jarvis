@@ -100,20 +100,4 @@ class IntersectTest {
             actual = Circle(ORIGIN, 1.0) intersect Line(0.0, 0.0)
         )
     }
-
-    private val comparator = compareBy<Vector.Cartesian> { it.x }.thenBy { it.y }
-    private fun assertClose(
-        expected: Set<Vector.Cartesian>,
-        actual: Set<Vector.Cartesian>,
-        delta: Double = 1e-12,
-    ) {
-        val sortedExpected = expected.sortedWith(comparator)
-        val sortedActual = actual.sortedWith(comparator)
-
-        val delta2 = delta * delta
-        val distances = sortedActual.zip(sortedExpected) { a, e -> a.r2(e) }
-        if (distances.any { it > delta2 }) {
-            assertEquals(sortedExpected, sortedActual)
-        }
-    }
 }

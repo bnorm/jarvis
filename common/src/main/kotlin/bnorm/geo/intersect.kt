@@ -164,3 +164,73 @@ infix fun Circle.intersect(line: Line): Set<Vector.Cartesian> {
 
 inline infix fun Line.intersect(circle: Circle) =
     circle.intersect(this)
+
+//
+//
+//
+
+infix fun Line.intersect(segment: Segment): Vector.Cartesian? {
+    val x1 = segment.p1.x
+    val y1 = segment.p1.y
+    val x2 = segment.p2.x
+    val y2 = segment.p2.y
+
+    if (vertical) {
+        if (x1 == x2) return null
+
+        val x = b
+        return if (x1 < x2 && x in x1..x2 || x in x2..x1) TODO("linear average")
+        else null
+    }
+
+    if (x1 == x2) {
+
+        val y = m * x1 + b
+        return if (y1 < y2 && y in y1..y2 || y in y2..y1) Vector.Cartesian(x1, y)
+        else null
+    }
+
+    // y = m * x + b -> b = y - m * x
+    // y1 - m * x1 = y2 - m * x2
+    // y1 - y2 = m * (x1 - x2)
+    // m = (y1 - y2) / (x1 - x2)
+    val m = (y1 - y2) / (x1 - x2)
+
+    // y = m * x + b -> m = (y - b) / x
+    // b = y1 - m * x1
+    val b = y1 - m * x1
+
+    // y = m1 * x + b1
+    // y = m2 * x + b2
+    // m1 * x + b1 = m2 * x + b2
+    // x = (b2 - b1) / (m1 - m2)
+    val x = (this.b - b) / (m - this.m)
+    val y = this.m * x + this.b
+
+    return if (y - m * x == y1 - m * x1) Vector.Cartesian(x, y)
+    else null
+}
+
+//
+//
+//
+
+infix fun Rectangle.intersect(segment: Segment): List<Vector.Cartesian> {
+    val contains1 = contains(segment.p1)
+    val contains2 = contains(segment.p1)
+
+    // Both points are inside so intersection is impossible
+    if (contains1 && contains2) return emptyList()
+
+    val c1 = Vector.Cartesian(xRange.start, yRange.start)
+    val c2 = Vector.Cartesian(xRange.endInclusive, yRange.start)
+    val c3 = Vector.Cartesian(xRange.endInclusive, yRange.endInclusive)
+    val c4 = Vector.Cartesian(xRange.start, yRange.endInclusive)
+
+    return listOfNotNull(
+        segment intersect Segment(c1, c2),
+        segment intersect Segment(c2, c3),
+        segment intersect Segment(c3, c4),
+        segment intersect Segment(c4, c1),
+    )
+}

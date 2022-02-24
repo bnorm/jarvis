@@ -24,13 +24,8 @@ fun Line(p1: Vector.Cartesian, p2: Vector.Cartesian): Line {
     val m = (p1.y - p2.y) / (p1.x - p2.x)
 
     // y = m * x + b -> m = (y - b) / x
-    // y1 = ((y2 - b) / x2) * x1 + b
-    // y1 = (y2 * x1 - b * x1) / x2 + b
-    // y1 - (y2 * x1) / x2 = b - (b * x1) / x2
-    // (y1 * x2) - (y2 * x1) = (b * x2) - (b * x1)
-    // b * (x2 - x1) = (y1 * x2) - (y2 * x1)
-    // b = ((y1 * x2) - (y2 * x1)) / (x2 - x1)
-    val b = ((p1.y * p2.x) - (p2.y * p1.x)) / (p2.x - p1.x)
+    // b = y1 - m * x1
+    val b = p1.y - m * p1.x
 
     return Line(m, b)
 }
@@ -49,4 +44,20 @@ fun Line(p: Vector.Cartesian, angle: Double): Line {
 fun Line.f(x: Double) = Vector.Cartesian(x, m * x + b)
 
 operator fun Line.contains(p: Vector.Cartesian): Boolean =
-   if (vertical) p.x == b else m * p.x + b == p.y
+    if (vertical) p.x == b else m * p.x + b == p.y
+
+infix fun Line.intersect(line: Line): Vector.Cartesian? {
+    if (this == line) return null // the same line
+    if (this.vertical && line.vertical) return null // both vertical and not equal
+
+    // If one line is vertical, intersection is easily calculated
+    if (this.vertical) return line.f(this.b)
+    if (line.vertical) return this.f(line.b)
+
+    // y = m1 * x + b1
+    // y = m2 * x + b2
+    // m1 * x + b1 = m2 * x + b2
+    // x = (b2 - b1) / (m1 - m2)
+
+    return this.f((line.b - b) / (m - line.m))
+}

@@ -37,14 +37,16 @@ sealed class Vector {
     }
 }
 
+fun Vector.toCartesian() = this as? Vector.Cartesian ?: Vector.Cartesian(x, y)
 fun Cartesian(x: Double, y: Double) = Vector.Cartesian(x, y)
-fun Polar(theta: Double, r: Double) = Vector.Polar(theta, r)
+fun Cartesian(x: Double, y: Double, theta: Double, r: Double) =
+    Vector.Cartesian(x + sin(theta) * r, y + cos(theta) * r)
 
 fun Vector.toPolar() = this as? Vector.Polar ?: Vector.Polar(theta, r)
-fun Vector.toCartesian() = this as? Vector.Cartesian ?: Vector.Cartesian(x, y)
+fun Polar(theta: Double, r: Double) = Vector.Polar(theta, r)
 
 fun Vector.project(theta: Double, r: Double) =
-    Vector.Cartesian(x + sin(theta) * r, y + cos(theta) * r)
+    Cartesian(x, y, theta, r)
 
 fun Vector.theta(x: Double, y: Double): Double {
     return atan2(x - this.x, y - this.y)

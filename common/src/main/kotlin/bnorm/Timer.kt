@@ -2,9 +2,9 @@ package bnorm
 
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
-import kotlin.time.nanoseconds
 
 object Timer {
     data class Mark(
@@ -25,7 +25,7 @@ object Timer {
     fun start(name: String) = Mark(name, TimeSource.Monotonic.markNow())
     fun end(mark: Mark) {
         val (total, count) = _timings.getOrPut(mark.name) { Accumulation() }
-        total.getAndAdd(mark.time.elapsedNow().toLongNanoseconds())
+        total.getAndAdd(mark.time.elapsedNow().inWholeNanoseconds)
         count.getAndIncrement()
     }
 }
