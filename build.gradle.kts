@@ -51,6 +51,7 @@ tasks.robocodeRun {
 }
 
 robocode {
+    downloadVersion = "1.9.3.9"
     robots {
         register("Jarvis") {
             classPath = "bnorm.Jarvis"
