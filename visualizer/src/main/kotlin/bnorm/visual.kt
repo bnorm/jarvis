@@ -1,12 +1,10 @@
 package bnorm
 
-import androidx.compose.desktop.Window
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.HorizontalScrollbar
-import androidx.compose.foundation.ScrollableColumn
-import androidx.compose.foundation.ScrollableRow
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,23 +15,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Slider
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.singleWindowApplication
 import bnorm.debug.GuessFactorSnapshot
 import bnorm.kdtree.KdTree
 import bnorm.parts.gun.gauss
@@ -41,14 +39,12 @@ import bnorm.parts.gun.toGuessFactor
 import bnorm.robot.RobotSnapshot
 import bnorm.ui.GuessFactorGraph
 import kotlinx.serialization.decodeFromString
-import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.useLines
 
 val file = resource("snapshots-cx.mini.Cigaret 1.31TC.json")
 
-fun main() = Window(
+fun main() = singleWindowApplication(
     title = "Compose for Desktop",
-    size = IntSize(800, 800)
 ) {
     var snapshots by remember { mutableStateOf<List<GuessFactorSnapshot>?>(null) }
     var tree by remember { mutableStateOf<KdTree<GuessFactorSnapshot>?>(null) }
@@ -146,17 +142,16 @@ fun ScrollPane(
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        val stateVertical = rememberScrollState(0f)
-        val stateHorizontal = rememberScrollState(0f)
+        val stateVertical = rememberScrollState(0)
+        val stateHorizontal = rememberScrollState(0)
 
-        ScrollableColumn(
+        Box(
             modifier = Modifier.fillMaxSize()
-                .padding(end = 12.dp, bottom = 12.dp),
-            scrollState = stateVertical
+                .padding(end = 12.dp, bottom = 12.dp)
+                .verticalScroll(stateVertical)
+                .horizontalScroll(stateHorizontal),
         ) {
-            ScrollableRow(scrollState = stateHorizontal) {
-                body()
-            }
+            body()
         }
 
         VerticalScrollbar(
@@ -187,7 +182,7 @@ fun SnapshotGraph(
     val color = if (column < row) Color.White else Color.Unspecified
 
     Column(Modifier.padding(8.dp)) {
-        Text("X:$columnName\nY:$rowName", color = color, fontSize = TextUnit.Sp(8))
+        Text("X:$columnName\nY:$rowName", color = color, fontSize = 8.sp)
         Canvas(Modifier.size(graphSize, graphSize).background(color)) {
             if (column < row) {
                 for (snapshot in snapshots) {

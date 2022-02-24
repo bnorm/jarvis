@@ -1,17 +1,11 @@
 package bnorm.coroutines
 
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import robocode.AdvancedRobot
-import robocode.BattleEndedEvent
 import robocode.BulletHitBulletEvent
 import robocode.BulletHitEvent
 import robocode.DeathEvent
@@ -44,10 +38,10 @@ abstract class CoroutineRobot : AdvancedRobot() {
         _main = coroutineContext[CoroutineDispatcher]!!
 
         val eventFlow = flow<Event> {
-            var event = events.poll()
+            var event = events.tryReceive().getOrNull()
             while (event != null) {
                 emit(event)
-                event = events.poll()
+                event = events.tryReceive().getOrNull()
             }
         }
 
@@ -66,7 +60,7 @@ abstract class CoroutineRobot : AdvancedRobot() {
 
     private val events = Channel<Event>(capacity = Channel.UNLIMITED)
     private fun add(event: Event) {
-        events.offer(event)
+        events.trySend(event)
     }
 
     override fun onStatus(event: StatusEvent) = add(event)

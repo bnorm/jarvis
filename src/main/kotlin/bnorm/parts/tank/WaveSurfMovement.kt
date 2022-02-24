@@ -20,7 +20,6 @@ import bnorm.sqr
 import bnorm.theta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.receiveOrNull
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.flow.transformWhile
@@ -85,7 +84,7 @@ class WaveSurfMovement(
         key: Movement,
         remaining: ReceiveChannel<Double>,
     ): Option<Movement, Double>? {
-        val next = remaining.receiveOrNull() ?: return null
+        val next = remaining.receiveCatching().getOrNull() ?: return null
         return Option(key, next, remaining)
     }
 
@@ -106,7 +105,7 @@ class WaveSurfMovement(
 
         while (queue.size > 1) {
             val head = queue.remove()
-            val next = head.remaining.receiveOrNull() ?: continue
+            val next = head.remaining.receiveCatching().getOrNull() ?: continue
             head.head = next
             queue.add(head)
         }

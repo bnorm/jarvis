@@ -3,12 +3,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
-    id("org.jetbrains.compose") version "0.2.0-build132"
+    id("org.jetbrains.compose") version "1.1.0-rc01"
 }
 
 repositories {
     mavenCentral()
-    jcenter()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
@@ -18,14 +17,14 @@ dependencies {
     implementation(compose.desktop.currentOs)
 
     implementation("com.jakewharton.picnic:picnic:0.5.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
 }
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         jvmTarget = "11"
-        freeCompilerArgs += listOf(
+        freeCompilerArgs = freeCompilerArgs + listOf(
             "-Xopt-in=kotlin.ExperimentalStdlibApi",
             "-Xopt-in=kotlin.time.ExperimentalTime",
             "-Xopt-in=kotlin.io.path.ExperimentalPathApi"
