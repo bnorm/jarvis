@@ -110,6 +110,11 @@ class WaveSurfMovement(
             queue.add(head)
         }
 
+        for (option in options) {
+            // Cancel anything unconsumed
+            option?.remaining?.cancel()
+        }
+
         return queue.poll()?.key
     }
 
