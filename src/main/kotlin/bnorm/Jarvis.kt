@@ -195,12 +195,12 @@ open class Jarvis @JvmOverloads constructor(
                 pounce(robot)
             })
 
-        val snapshotChannel = Channel<Pair<Robot, RobotSnapshot>>(Channel.UNLIMITED)
+        //        val snapshotChannel = Channel<Pair<Robot, RobotSnapshot>>(Channel.UNLIMITED)
         val movementOne = mutableMapOf<String, WaveSurfMovement>()
     }
 
     override suspend fun init(): RobotTurn {
-        GlobalScope.launch(Computation) { exportSnapshots(snapshotChannel) }
+//        GlobalScope.launch(Computation) { exportSnapshots(snapshotChannel) }
 
         val battleField = BattleField()
         val movementMelee = MinimumRiskMovement(battleField, robotService.alive)
@@ -211,7 +211,7 @@ open class Jarvis @JvmOverloads constructor(
             when {
                 robots.size == 1 -> robots.first()
                 // Gun is within 4 ticks of firing, target closest robot
-                gunHeat - gunCoolingRate * 4 <= 0 -> robotService.closest()
+//                gunHeat - gunCoolingRate * 4 <= 0 -> robotService.closest()
                 else -> null
             }
         }
@@ -273,11 +273,14 @@ open class Jarvis @JvmOverloads constructor(
                         if (movementEnabled) {
                             launch(Computation) {
                                 trace("parts.tank") {
-                                    val movement = movementOne.getOrPut(target.name) {
-                                        WaveSurfMovement(robotService.self, target) {
-                                            val waves = target.attackWaves.waves.filter { it.context[RealBullet] }
-                                            waves.map { SurfableWave(it, it.context[BulletCluster]) }
+                                    val movement = when (robotService.alive.size) {
+                                        1 -> movementOne.getOrPut(target.name) {
+                                            WaveSurfMovement(robotService.self, target) {
+                                                val waves = target.attackWaves.waves.filter { it.context[RealBullet] }
+                                                waves.map { SurfableWave(it, it.context[BulletCluster]) }
+                                            }
                                         }
+                                        else -> movementMelee
                                     }
 
                                     movement.move()
@@ -649,7 +652,7 @@ private suspend fun RobotService.pounce(robot: Robot) {
             virtualTree.add(snapshot)
 
             // TODO save snapshot to file
-            Jarvis.snapshotChannel.send(robot to snapshot)
+//            Jarvis.snapshotChannel.send(robot to snapshot)
         }
     }
 }

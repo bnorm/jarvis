@@ -2,14 +2,13 @@ package bnorm.robot
 
 import bnorm.parts.BattleField
 import bnorm.r2
-import bnorm.robot.interp.RobotLink
-import bnorm.robot.interp.solve
+import java.util.Collections
 
 class RobotService(
     private val onSelf: suspend RobotService.(Robot) -> Unit,
     private val onEnemy: suspend RobotService.(Robot) -> Unit,
 ) {
-    private val _alive = mutableMapOf<String, Robot>()
+    private val _alive = Collections.synchronizedMap(mutableMapOf<String, Robot>())
     val alive: Collection<Robot> = _alive.values
 
     private val dead = mutableMapOf<String, Robot>()
@@ -31,7 +30,6 @@ class RobotService(
         return value
     }
 
-
     suspend fun onScan(name: String, scan: RobotScan, battleField: BattleField) {
         when (val existing = _alive[name]) {
             null -> _alive[name] = dead[name]?.apply { revive(scan) } ?: run {
@@ -39,25 +37,25 @@ class RobotService(
             }
             else -> {
                 val lag = scan.time - existing.latest.time
-                if (lag > 1) {
-                    val start = existing.latest
-                    val end = scan
-
-                    val chain = sequence {
-                        yield(RobotLink(start.location, start.velocity))
-                        repeat((lag - 1).toInt()) {
-                            yield(RobotLink(start.location, start.velocity))
-                        }
-                        yield(RobotLink(end.location, end.velocity))
-                    }.toList()
-
-                    val solution = chain.solve()
-
-                    for (i in 1..solution.size - 2) {
-                        val link = solution[i]
-                        existing.scan(RobotScan(link.location, link.velocity, start.energy, start.time + i, true, null, null))
-                    }
-                }
+//                if (lag > 1) {
+//                    val start = existing.latest
+//                    val end = scan
+//
+//                    val chain = sequence {
+//                        yield(RobotLink(start.location, start.velocity))
+//                        repeat((lag - 1).toInt()) {
+//                            yield(RobotLink(start.location, start.velocity))
+//                        }
+//                        yield(RobotLink(end.location, end.velocity))
+//                    }.toList()
+//
+//                    val solution = chain.solve()
+//
+//                    for (i in 1..solution.size - 2) {
+//                        val link = solution[i]
+//                        existing.scan(RobotScan(link.location, link.velocity, start.energy, start.time + i, true, null, null))
+//                    }
+//                }
                 existing.scan(scan)
             }
         }
