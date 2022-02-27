@@ -7,8 +7,6 @@ import bnorm.project
 import bnorm.r2
 import bnorm.sqr
 import bnorm.theta
-import kotlin.math.PI
-import kotlin.math.acos
 import kotlin.math.sqrt
 
 infix fun Rectangle.intersect(circle: Circle): Set<Vector.Cartesian> {
@@ -65,7 +63,7 @@ infix fun Circle.tangents(p: Vector.Cartesian): Set<Line> {
     if (r2 < radius * radius) return emptySet()
 
     val angle = center.theta(p)
-    if (r2 == radius * radius) return setOf(Line(p, angle + PI / 2))
+    if (r2 == radius * radius) return setOf(Line(p, angle + Angle.QUARTER_CIRCLE))
 
     val delta = acos(radius / sqrt(r2))
     return setOf(

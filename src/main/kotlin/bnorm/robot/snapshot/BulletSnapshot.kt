@@ -1,6 +1,7 @@
 package bnorm.robot.snapshot
 
 import bnorm.Vector
+import bnorm.geo.Angle
 import kotlinx.serialization.Serializable
 import robocode.Bullet
 import robocode.Rules
@@ -23,7 +24,7 @@ data class BulletSnapshot(
 
 fun Bullet.toSnapshot() = BulletSnapshot(
     location = Vector.Cartesian(x, y),
-    velocity = Vector.Polar(headingRadians, velocity),
+    velocity = Vector.Polar(Angle(headingRadians), velocity),
     owner = name,
     victim = victim,
 )

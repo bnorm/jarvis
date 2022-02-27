@@ -2,6 +2,7 @@ package bnorm.parts.tank
 
 import bnorm.Vector
 import bnorm.WaveHeading
+import bnorm.geo.asin
 import bnorm.guessFactor
 import bnorm.kdtree.KdTree
 import bnorm.parts.gun.GuessFactorSnapshot
@@ -24,9 +25,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.flow.transformWhile
 import robocode.Rules
-import java.util.*
+import java.util.PriorityQueue
 import kotlin.math.abs
-import kotlin.math.asin
 
 data class SurfableWave(
     val wave: Wave,

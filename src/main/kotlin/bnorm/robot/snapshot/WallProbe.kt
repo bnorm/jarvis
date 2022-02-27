@@ -1,14 +1,17 @@
 package bnorm.robot.snapshot
 
 import bnorm.Vector
+import bnorm.geo.Angle
+import bnorm.geo.cos
+import bnorm.geo.normalizeAbsolute
 import bnorm.parts.BattleField
+import bnorm.sim.ANGLE_DOWN
+import bnorm.sim.ANGLE_LEFT
+import bnorm.sim.ANGLE_RIGHT
 import bnorm.sqr
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import robocode.util.Utils
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.sqrt
 
 @Serializable
@@ -30,20 +33,20 @@ data class WallProbe(
 
     @Serializable
     data class Movement(
-        val heading: Double,
+        val heading: Angle,
         val forward: Double,
         val backward: Double,
     ) {
         fun forward() = Vector.Polar(heading, forward)
-        fun backward() = Vector.Polar(heading + PI, backward)
+        fun backward() = Vector.Polar(heading + Angle.HALF_CIRCLE, backward)
     }
 }
 
 fun WallProbe(
     battleField: BattleField,
     location: Vector.Cartesian,
-    heading: Double,
-    perpendicular: Double
+    heading: Angle,
+    perpendicular: Angle
 ): WallProbe {
     val position = position(battleField, location)
     return WallProbe(position, probe(position, heading), probe(position, perpendicular))
@@ -62,13 +65,13 @@ private fun position(
 
 private fun probe(
     position: WallProbe.Position,
-    angle: Double
+    angle: Angle
 ): WallProbe.Movement {
-    val heading = Utils.normalAbsoluteAngle(angle)
-    val headingXWallDistance = (if (heading < PI) position.east else position.west) / abs(cos(PI / 2 - heading))
-    val reverseXWallDistance = (if (heading < PI) position.west else position.east) / abs(cos(PI / 2 - heading))
-    val headingYWallDistance = (if (heading in PI / 2..PI * 3 / 2) position.south else position.north) / abs(cos(heading))
-    val reverseYWallDistance = (if (heading in PI / 2..PI * 3 / 2) position.north else position.south) / abs(cos(heading))
+    val heading = angle.normalizeAbsolute()
+    val headingXWallDistance = (if (heading < ANGLE_DOWN) position.east else position.west) / abs(cos(ANGLE_RIGHT - heading))
+    val reverseXWallDistance = (if (heading < ANGLE_DOWN) position.west else position.east) / abs(cos(ANGLE_RIGHT - heading))
+    val headingYWallDistance = (if (heading in ANGLE_RIGHT..ANGLE_LEFT) position.south else position.north) / abs(cos(heading))
+    val reverseYWallDistance = (if (heading in ANGLE_RIGHT..ANGLE_LEFT) position.north else position.south) / abs(cos(heading))
     return WallProbe.Movement(
         heading = heading,
         forward = minOf(headingXWallDistance, headingYWallDistance),

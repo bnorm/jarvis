@@ -2,6 +2,7 @@ package bnorm.parts.gun
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.geo.times
 import bnorm.kdtree.KdTree
 import bnorm.parts.tank.escape.escape
 import bnorm.robot.Robot

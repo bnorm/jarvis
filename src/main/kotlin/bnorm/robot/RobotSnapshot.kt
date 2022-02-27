@@ -1,5 +1,10 @@
 package bnorm.robot
 
+import bnorm.geo.Angle
+import bnorm.geo.cos
+import bnorm.geo.normalizeAbsolute
+import bnorm.geo.sin
+import bnorm.geo.times
 import bnorm.parts.gun.GuessFactorSnapshot
 import bnorm.parts.tank.TANK_ACCELERATION
 import bnorm.parts.tank.TANK_DECELERATION
@@ -11,13 +16,9 @@ import bnorm.theta
 import bnorm.truncate
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import robocode.util.Utils
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sign
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Serializable
@@ -150,7 +151,7 @@ fun robotSnapshot(
     val distance = r(selfScan.location, scan.location)
 
     val speed = scan.velocity.r
-    val heading = Utils.normalAbsoluteAngle(scan.velocity.theta)
+    val heading = scan.velocity.theta.normalizeAbsolute()
 
     val relativeBearing = heading - theta
 
@@ -191,8 +192,8 @@ fun robotSnapshot(
     val wallProbe = WallProbe(
         battleField,
         scan.location,
-        heading + if (moveDirection < 0.0) PI else 0.0,
-        theta + rotateDirection * (PI / 2)
+        heading + if (moveDirection < 0.0) Angle.HALF_CIRCLE else Angle.ZERO,
+        theta + rotateDirection.toDouble() * Angle.QUARTER_CIRCLE
     )
 
     val west = scan.location.x

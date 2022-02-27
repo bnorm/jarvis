@@ -1,23 +1,21 @@
 package bnorm.parts.radar
 
+import bnorm.geo.Angle
 import bnorm.parts.RobotPart
 import robocode.AdvancedRobot
-import kotlin.math.PI
-
-const val RADAR_MAX_TURN = PI / 4 // robocode.Rules.RADAR_TURN_RATE_RADIANS
 
 interface Radar : RobotPart {
-    val heading: Double
+    val heading: Angle
 
-    fun setTurn(radians: Double)
+    fun setTurn(angle: Angle)
 }
 
 fun Radar(robot: AdvancedRobot): Radar {
     return object : Radar, RobotPart by RobotPart(robot) {
-        override val heading: Double get() = robot.radarHeadingRadians
+        override val heading: Angle get() = Angle(robot.radarHeadingRadians)
 
-        override fun setTurn(radians: Double) {
-            robot.setTurnRadarRightRadians(radians)
+        override fun setTurn(angle: Angle) {
+            robot.setTurnRadarRightRadians(angle.radians)
         }
     }
 }

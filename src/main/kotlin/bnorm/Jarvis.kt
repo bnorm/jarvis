@@ -3,6 +3,9 @@ package bnorm
 import bnorm.coroutines.MyCoroutineRobot
 import bnorm.coroutines.RobotTurn
 import bnorm.debug.GuessFactorSnapshot
+import bnorm.geo.Angle
+import bnorm.geo.normalizeRelative
+import bnorm.geo.times
 import bnorm.kdtree.KdTree
 import bnorm.neural.NeuralNetwork
 import bnorm.parts.BattleField
@@ -79,7 +82,7 @@ object RealBullet : WaveContext.Key<Boolean>
 object VirtualCluster : WaveContext.Key<Collection<KdTree.Neighbor<RobotSnapshot>>>
 object RealCluster : WaveContext.Key<Collection<KdTree.Neighbor<RobotSnapshot>>>
 object BulletCluster : WaveContext.Key<Collection<KdTree.Neighbor<RobotSnapshot>>>
-object WaveHeading : WaveContext.Key<Double>
+object WaveHeading : WaveContext.Key<Angle>
 
 // Movement only version of Jarvis
 class JarvisM : Jarvis(targetingEnabled = false)
@@ -319,8 +322,9 @@ open class Jarvis @JvmOverloads constructor(
 
     private suspend fun fire(predicted: Vector, power: Double): Bullet? {
         return withContext(Main) {
-            setTurnGunRightRadians(Utils.normalRelativeAngle(predicted.theta - gunHeadingRadians))
-            if (abs(gunTurnRemainingRadians) <= (PI / 360)) setFireBullet(power) else null
+            val bullet = if (gunTurnRemainingRadians == 0.0) setFireBullet(power) else null
+            setTurnGunRightRadians((predicted.theta - Angle(gunHeadingRadians)).normalizeRelative().radians)
+            bullet
         }
     }
 
@@ -328,7 +332,7 @@ open class Jarvis @JvmOverloads constructor(
         val latest = robotService.self.latest
         val move = invoke(latest.location, latest.velocity)
         withContext(Main) {
-            setTurnRightRadians(move.theta)
+            setTurnRightRadians(move.theta.radians)
             setAhead(move.r)
         }
     }
@@ -516,21 +520,21 @@ val BulletHitEvent.energy: Double get() = 3 * bullet.power
 val HitByBulletEvent.damage: Double get() = Rules.getBulletDamage(bullet.power)
 val HitByBulletEvent.energy: Double get() = 3 * bullet.power
 
-fun Wave.guessFactor(location: Vector.Cartesian, waveHeading: Double = context[WaveHeading]): Double {
-    val bearing = Utils.normalRelativeAngle(origin.theta(location) - waveHeading)
-    val escapeAngle = if (bearing < 0) escapeAngle.leftAngle else escapeAngle.rightAngle
-    return (snapshot.gfDirection * bearing / escapeAngle).coerceIn(-1.0, 1.0)
+fun Wave.guessFactor(location: Vector.Cartesian, waveHeading: Angle = context[WaveHeading]): Double {
+    val bearing = (origin.theta(location) - waveHeading).normalizeRelative()
+    val escapeAngle = if (bearing < Angle.ZERO) escapeAngle.leftAngle else escapeAngle.rightAngle
+    return (snapshot.gfDirection.toDouble() * bearing / escapeAngle).coerceIn(-1.0, 1.0)
 }
 
-fun Wave.guessFactor(bearing: Double): Double {
-    val escapeAngle = if (bearing < 0) escapeAngle.leftAngle else escapeAngle.rightAngle
-    return (snapshot.gfDirection * bearing / escapeAngle).coerceIn(-1.0, 1.0)
+fun Wave.guessFactor(bearing: Angle): Double {
+    val escapeAngle = if (bearing < Angle.ZERO) escapeAngle.leftAngle else escapeAngle.rightAngle
+    return (snapshot.gfDirection.toDouble() * bearing / escapeAngle).coerceIn(-1.0, 1.0)
 }
 
 fun robocode.AdvancedRobot.toRobotScan(): RobotScan {
     return RobotScan(
         location = Cartesian(x, y),
-        velocity = Polar(headingRadians, velocity),
+        velocity = Polar(Angle(headingRadians), velocity),
         energy = energy,
         time = time,
         interpolated = false,
@@ -540,7 +544,7 @@ fun robocode.AdvancedRobot.toRobotScan(): RobotScan {
 fun StatusEvent.toRobotScan(): RobotScan {
     return RobotScan(
         location = Cartesian(status.x, status.y),
-        velocity = Polar(status.headingRadians, status.velocity),
+        velocity = Polar(Angle(status.headingRadians), status.velocity),
         energy = status.energy,
         time = status.time,
         interpolated = false,
@@ -555,7 +559,7 @@ fun ScannedRobotEvent.toRobotScan(
     val angle = robot.headingRadians + bearingRadians
     return RobotScan(
         location = Cartesian(robot.x + sin(angle) * distance, robot.y + cos(angle) * distance),
-        velocity = Polar(headingRadians, velocity),
+        velocity = Polar(Angle(headingRadians), velocity),
         energy = energy,
         time = time,
         interpolated = false,

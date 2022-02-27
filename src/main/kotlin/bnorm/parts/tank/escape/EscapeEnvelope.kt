@@ -1,9 +1,11 @@
 package bnorm.parts.tank.escape
 
 import bnorm.Vector
+import bnorm.geo.Angle
 import bnorm.geo.Circle
 import bnorm.geo.contains
 import bnorm.geo.intersect
+import bnorm.geo.normalizeRelative
 import bnorm.geo.tangentPoints
 import bnorm.parts.BattleField
 import bnorm.parts.gun.virtual.Wave
@@ -12,14 +14,13 @@ import bnorm.parts.tank.TANK_MAX_SPEED
 import bnorm.r
 import bnorm.sqr
 import bnorm.theta
-import robocode.util.Utils
 import kotlin.math.sqrt
 
 data class EscapeEnvelope(
     val leftPoint: Vector.Cartesian,
-    val leftAngle: Double,
+    val leftAngle: Angle,
     val rightPoint: Vector.Cartesian,
-    val rightAngle: Double,
+    val rightAngle: Angle,
     val source: Vector.Cartesian,
     val target: Vector.Cartesian,
     val speed: Double,
@@ -53,14 +54,14 @@ fun escapeCircle(
 
 fun BattleField.escape(source: Vector.Cartesian, target: Vector.Cartesian, speed: Double): EscapeEnvelope {
     var leftPoint = target
-    var leftAngle = 0.0
+    var leftAngle = Angle.ZERO
     var rightPoint = target
-    var rightAngle = 0.0
+    var rightAngle = Angle.ZERO
 
     val angle = source.theta(target)
     fun assign(t: Vector.Cartesian) {
-        val tAngle = Utils.normalRelativeAngle(source.theta(t) - angle)
-        if (tAngle < 0.0) {
+        val tAngle = (source.theta(t) - angle).normalizeRelative()
+        if (tAngle < Angle.ZERO) {
             if (-tAngle > leftAngle) {
                 leftPoint = t
                 leftAngle = -tAngle

@@ -1,11 +1,14 @@
 package bnorm.parts.radar
 
+import bnorm.geo.Angle
+import bnorm.geo.abs
+import bnorm.geo.normalizeAbsolute
+import bnorm.geo.normalizeRelative
+import bnorm.geo.sign
+import bnorm.geo.times
 import bnorm.robot.Robot
+import bnorm.sim.RADAR_MAX_TURN
 import bnorm.theta
-import robocode.util.Utils
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.sign
 
 class MeleeScan(
     private val radar: Radar,
@@ -16,19 +19,19 @@ class MeleeScan(
     override fun setMove() {
         if (aliveRobots.isEmpty()) {
             // If there are no known alive robots, spin infinitely
-            radar.setTurn(Double.POSITIVE_INFINITY)
+            radar.setTurn(Angle.POSITIVE_INFINITY)
             return
         }
 
         val currTime = radar.time
-        val robotAngles = sortedSetOf<Double>()
+        val robotAngles = sortedSetOf<Angle>()
         for (robot in aliveRobots) {
             val scan = robot.latest
             val angle = theta(radar.x, radar.y, scan.location)
             val escapeAngle = radar.escapeAngle(currTime + 2, scan)
 
-            robotAngles.add(Utils.normalAbsoluteAngle(angle - escapeAngle))
-            robotAngles.add(Utils.normalAbsoluteAngle(angle + escapeAngle))
+            robotAngles.add((angle - escapeAngle).normalizeAbsolute())
+            robotAngles.add((angle + escapeAngle).normalizeAbsolute())
         }
 
         //             x
@@ -42,11 +45,11 @@ class MeleeScan(
         // Need to turn *left* to the *max*
 
         var prev = robotAngles.last()
-        var maxGap = 0.0
-        var rightRobotAngle = 0.0
-        var leftRobotAngle = 0.0
+        var maxGap = Angle.ZERO
+        var rightRobotAngle = Angle.ZERO
+        var leftRobotAngle = Angle.ZERO
         for (next in robotAngles) {
-            val gap = Utils.normalAbsoluteAngle(next - prev)
+            val gap = (next - prev).normalizeAbsolute()
             if (gap > maxGap) {
                 maxGap = gap
                 rightRobotAngle = prev
@@ -54,20 +57,20 @@ class MeleeScan(
             }
 
             // If the gap is bigger than *half* a circle, there cannot be a bigger gap
-            if (maxGap > PI) break
+            if (maxGap > Angle.HALF_CIRCLE) break
             prev = next
         }
 
-        if (maxGap > PI) {
-            val rightBearing = Utils.normalRelativeAngle(rightRobotAngle - radar.heading)
-            val leftBearing = Utils.normalRelativeAngle(leftRobotAngle - radar.heading)
+        if (maxGap > Angle.HALF_CIRCLE) {
+            val rightBearing = (rightRobotAngle - radar.heading).normalizeRelative()
+            val leftBearing = (leftRobotAngle - radar.heading).normalizeRelative()
 
             val turnAngle = when {
-                rightBearing == 0.0 -> leftBearing
-                leftBearing == 0.0 -> rightBearing
+                rightBearing == Angle.ZERO -> leftBearing
+                leftBearing == Angle.ZERO -> rightBearing
                 sign(rightBearing) == sign(leftBearing) -> {
                     // Both bearings are in the same direction, turn towards the farthest
-                    turningRight = rightBearing > 0
+                    turningRight = rightBearing > Angle.ZERO
                     sign(rightBearing) * maxOf(abs(rightBearing), abs(leftBearing))
                 }
                 turningRight -> rightBearing
@@ -81,7 +84,7 @@ class MeleeScan(
                 turningRight = !turningRight
             }
         } else {
-            radar.setTurn(if (turningRight) Double.POSITIVE_INFINITY else Double.NEGATIVE_INFINITY)
+            radar.setTurn(if (turningRight) Angle.POSITIVE_INFINITY else Angle.NEGATIVE_INFINITY)
         }
     }
 }

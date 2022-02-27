@@ -1,9 +1,6 @@
 package bnorm.geo
 
 import bnorm.Vector
-import bnorm.normalAbsoluteAngle
-import kotlin.math.PI
-import kotlin.math.tan
 
 data class Line(
     val m: Double,
@@ -30,13 +27,13 @@ fun Line(p1: Vector.Cartesian, p2: Vector.Cartesian): Line {
     return Line(m, b)
 }
 
-fun Line(p: Vector.Cartesian, angle: Double): Line {
+fun Line(p: Vector.Cartesian, angle: Angle): Line {
     // Vertical line
-    val absolute = normalAbsoluteAngle(angle)
-    if (absolute % PI == 0.0) return Line(Double.NaN, p.x)
+    val absolute = angle.normalizeAbsolute()
+    if (absolute % Angle.HALF_CIRCLE == Angle.ZERO) return Line(Double.NaN, p.x)
 
     // y = m * x + b
-    val m = tan(PI / 2 - absolute) // Robocode angle -> Polar angle
+    val m = tan(Angle.QUARTER_CIRCLE - absolute) // Robocode angle -> Polar angle
     val b = p.y - (m * p.x)
     return Line(m, b)
 }

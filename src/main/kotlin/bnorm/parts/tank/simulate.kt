@@ -1,14 +1,15 @@
 package bnorm.parts.tank
 
 import bnorm.Vector
+import bnorm.geo.Angle
 import bnorm.geo.Segment
 import bnorm.geo.contains
 import bnorm.geo.intersect
 import bnorm.parts.BattleField
 import bnorm.robot.Robot
+import bnorm.sim.getTankTurnRate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import robocode.Rules
 
 fun Robot.simulate(movement: Movement) =
     battleField.simulate(latest.location, latest.velocity, movement)
@@ -43,12 +44,12 @@ fun BattleField.simulate(
     }
 }
 
-fun simulateVelocity(velocity: Vector.Polar, turn: Double, distance: Double): Vector.Polar =
+fun simulateVelocity(velocity: Vector.Polar, turn: Angle, distance: Double): Vector.Polar =
     Vector.Polar(velocity.theta + simulateTurn(velocity.r, turn), simulateSpeed(velocity.r, distance))
 
-fun simulateTurn(currentSpeed: Double, turn: Double): Double =
-    if (turn < 0.0) -simulateTurn(currentSpeed, -turn)
-    else turn.coerceAtMost(Rules.getTurnRateRadians(currentSpeed))
+fun simulateTurn(currentSpeed: Double, turn: Angle): Angle =
+    if (turn < Angle.ZERO) -simulateTurn(currentSpeed, -turn)
+    else turn.coerceAtMost(getTankTurnRate(currentSpeed))
 
 fun simulateSpeed(currentSpeed: Double, distance: Double): Double {
     if (distance < 0.0) {

@@ -1,21 +1,22 @@
 package bnorm.geo
 
-import bnorm.normalAbsoluteAngle
 import kotlin.math.PI
 
-class AngleRange(start: Double, end: Double) : ClosedRange<Double> {
-    override val start: Double = normalAbsoluteAngle(start)
-    override val endInclusive: Double = relativeToStart(end)
+class AngleRange(start: Angle, end: Angle) : ClosedRange<Angle> {
+    override val start: Angle = start.normalizeAbsolute()
+    override val endInclusive: Angle = relativeToStart(end)
 
     init {
-        require(this.endInclusive - this.start < 2 * PI)
+        require(this.endInclusive.radians - this.start.radians < 2 * PI)
     }
 
-    override fun contains(value: Double): Boolean {
+    override fun contains(value: Angle): Boolean {
         return relativeToStart(value) <= endInclusive
     }
 
-    private fun relativeToStart(theta: Double): Double {
-        return start + normalAbsoluteAngle(theta - start)
+    private fun relativeToStart(theta: Angle): Angle {
+        return start + (theta - start).normalizeAbsolute()
     }
 }
+
+operator fun Angle.rangeTo(end: Angle) = AngleRange(this, end)

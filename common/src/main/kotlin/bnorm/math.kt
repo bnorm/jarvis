@@ -2,9 +2,11 @@
 
 package bnorm
 
-import kotlin.math.PI
+import bnorm.geo.Angle
+import bnorm.geo.abs
+import bnorm.geo.atan2
+import bnorm.geo.normalizeRelative
 import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -20,16 +22,16 @@ inline fun truncate(d: Double, delta: Double): Double {
     return if (abs(d) < delta) 0.0 else d
 }
 
-inline fun theta(x: Double, y: Double): Double =
+inline fun theta(x: Double, y: Double): Angle =
     atan2(x, y)
 
-inline fun theta(x1: Double, y1: Double, x2: Double, y2: Double): Double =
+inline fun theta(x1: Double, y1: Double, x2: Double, y2: Double): Angle =
     atan2(x2 - x1, y2 - y1)
 
-inline fun theta(source: Vector, destination: Vector): Double =
+inline fun theta(source: Vector, destination: Vector): Angle =
     theta(source.x, source.y, destination.x, destination.y)
 
-inline fun theta(x: Double, y: Double, destination: Vector): Double =
+inline fun theta(x: Double, y: Double, destination: Vector): Angle =
     theta(x, y, destination.x, destination.y)
 
 inline fun r2(x1: Double, y1: Double, x2: Double, y2: Double): Double =
@@ -50,9 +52,9 @@ inline fun r(source: Vector, destination: Vector): Double =
 inline fun r(x: Double, y: Double, destination: Vector): Double =
     r(x, y, destination.x, destination.y)
 
-fun minBearing(heading: Double, h1: Double, h2: Double): Double {
-    val b1 = normalRelativeAngle(h1 - heading)
-    val b2 = normalRelativeAngle(h2 - heading)
+fun minBearing(heading: Angle, h1: Angle, h2: Angle): Angle {
+    val b1 = (h1 - heading).normalizeRelative()
+    val b2 = (h2 - heading).normalizeRelative()
     return if (abs(b1) < abs(b2)) b1 else b2
 }
 
@@ -60,25 +62,6 @@ fun Double.roundDecimals(decimals: Int): Double {
     var mul = 1.0
     repeat(decimals) { mul *= 10.0 }
     return (this * mul).roundToInt() / mul
-}
-
-fun normalRelativeAngle(angle: Double): Double {
-    val normal = angle % (2 * PI)
-    return when {
-        normal >= 0.0 -> when {
-            normal < PI -> normal
-            else -> normal - (2 * PI)
-        }
-        else -> when {
-            normal >= -PI -> normal
-            else -> normal + (2 * PI)
-        }
-    }
-}
-
-fun normalAbsoluteAngle(angle: Double): Double {
-    val normal = angle % (2 * PI)
-    return if (normal >= 0.0) normal else normal + (2 * PI)
 }
 
 fun rollingVariance(

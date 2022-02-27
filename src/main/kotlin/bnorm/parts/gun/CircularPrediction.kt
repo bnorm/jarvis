@@ -2,6 +2,7 @@ package bnorm.parts.gun
 
 import bnorm.Polar
 import bnorm.Vector
+import bnorm.geo.times
 import bnorm.parts.tank.TANK_MAX_SPEED
 import bnorm.r2
 import bnorm.robot.Robot
@@ -17,8 +18,8 @@ class CircularPrediction(
             curr.copy(
                 location = curr.location + curr.velocity,
                 velocity = Polar(
-                    theta = 2 * curr.velocity.theta - prev.velocity.theta,
-                    r = (2 * curr.velocity.r - prev.velocity.r).coerceIn(-TANK_MAX_SPEED, TANK_MAX_SPEED)
+                    theta = 2.0 * curr.velocity.theta - prev.velocity.theta,
+                    r = (2.0 * curr.velocity.r - prev.velocity.r).coerceIn(-TANK_MAX_SPEED, TANK_MAX_SPEED)
                 ),
                 time = curr.time + 1,
             )

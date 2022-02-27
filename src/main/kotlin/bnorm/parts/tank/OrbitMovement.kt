@@ -7,14 +7,14 @@ import bnorm.draw.DebugKey
 import bnorm.drawCircle
 import bnorm.drawProbe
 import bnorm.fillCircle
+import bnorm.geo.Angle
+import bnorm.geo.atan
 import bnorm.minBearing
 import bnorm.r
 import bnorm.robot.Robot
 import bnorm.theta
 import java.awt.Color
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.atan
 import kotlin.math.sign
 
 class OrbitMovement(
@@ -26,13 +26,13 @@ class OrbitMovement(
         val targetLocation = target.latest.location
         val theta = location.theta(targetLocation)
         val distance = location.r(targetLocation)
-        val bearingOffset = (PI / 2) * (radius / distance).coerceIn(0.75, 1.25) - atan(abs(velocity.r / 2) / radius)
+        val bearingOffset = Angle.QUARTER_CIRCLE * (radius / distance).coerceIn(0.75, 1.25) - atan(abs(velocity.r / 2) / radius)
 
         val clockwise = theta - bearingOffset
         val counter = theta + bearingOffset
 
         val movement = sign(direction) * 10 * TANK_MAX_SPEED
-        val heading = velocity.theta + if (movement < 0.0) PI else 0.0
+        val heading = velocity.theta + if (movement < 0.0) Angle.HALF_CIRCLE else Angle.ZERO
         val bearing = minBearing(heading, clockwise, counter)
 
         Debug.onDraw(DebugKey.OrbitMovement) {

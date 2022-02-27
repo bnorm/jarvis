@@ -4,6 +4,7 @@ import bnorm.geo.Circle
 import bnorm.geo.Line
 import bnorm.geo.Rectangle
 import bnorm.geo.intersect
+import bnorm.geo.times
 import bnorm.parts.gun.CircularPrediction
 import bnorm.parts.gun.DirectPrediction
 import bnorm.parts.gun.GuessFactorPrediction
@@ -15,8 +16,6 @@ import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.radius
 import bnorm.parts.tank.Movement
 import bnorm.parts.tank.OrbitMovement
-import bnorm.parts.tank.TANK_MAX_SPEED
-import bnorm.parts.tank.TANK_SIZE
 import bnorm.parts.tank.WallSmoothMovement
 import bnorm.parts.tank.escape.EscapeEnvelope
 import bnorm.parts.tank.escape.escapeAngle
@@ -25,14 +24,16 @@ import bnorm.robot.Robot
 import bnorm.robot.RobotScan
 import bnorm.robot.snapshot
 import bnorm.robot.snapshot.WallProbe
-import kotlinx.coroutines.flow.collect
+import bnorm.sim.ANGLE_DOWN
+import bnorm.sim.ANGLE_LEFT
+import bnorm.sim.ANGLE_RIGHT
+import bnorm.sim.ANGLE_UP
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.runBlocking
 import robocode.Rules
 import java.awt.Color
 import java.awt.Graphics2D
-import kotlin.math.PI
 
 fun Graphics2D.draw(circle: Circle) {
     drawCircle(circle.center, circle.radius)
@@ -222,10 +223,10 @@ fun Graphics2D.draw(
     val location = Cartesian(west, south)
 
     color = Color.white
-    drawProbe(location, Polar(0.0, north), 8)
-    drawProbe(location, Polar(PI / 2, east), 8)
-    drawProbe(location, Polar(PI, south), 8)
-    drawProbe(location, Polar(3 * PI / 2, west), 8)
+    drawProbe(location, Polar(ANGLE_UP, north), 8)
+    drawProbe(location, Polar(ANGLE_RIGHT, east), 8)
+    drawProbe(location, Polar(ANGLE_DOWN, south), 8)
+    drawProbe(location, Polar(ANGLE_LEFT, west), 8)
 
     color = Color.green
     drawProbe(location, wallProbe.heading.forward(), 8)

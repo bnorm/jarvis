@@ -5,6 +5,8 @@ import bnorm.Vector
 import bnorm.draw.Debug
 import bnorm.draw.DebugKey
 import bnorm.fillCircle
+import bnorm.geo.Angle
+import bnorm.geo.cos
 import bnorm.parts.BattleField
 import bnorm.parts.contains
 import bnorm.r2
@@ -13,9 +15,7 @@ import bnorm.robot.RobotScan
 import bnorm.sqr
 import bnorm.theta
 import java.awt.Color
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.sqrt
 
 class MinimumRiskMovement(
@@ -25,7 +25,7 @@ class MinimumRiskMovement(
     companion object {
         const val distanceValues = 3
         const val angleValues = 16
-        const val angleSection = PI * 2 / angleValues
+        val angleSection = Angle.CIRCLE / angleValues.toDouble()
     }
 
     private var destination: Vector.Cartesian? = null
@@ -71,7 +71,7 @@ class MinimumRiskMovement(
 
             return moveTo(location, velocity, destination)
         } else {
-            return Polar(0.0, 0.0)
+            return Polar(Angle.ZERO, 0.0)
         }
     }
 
@@ -85,7 +85,7 @@ class MinimumRiskMovement(
 
         repeat(distanceValues) { distance ->
             repeat(angleValues) { angle ->
-                yield(location + Polar(angleSection * angle, min + distanceSection * distance))
+                yield(location + Polar(angleSection * angle.toDouble(), min + distanceSection * distance))
             }
         }
     }

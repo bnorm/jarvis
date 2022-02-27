@@ -17,9 +17,10 @@ suspend fun AdvancedRobot.target(
     location: Vector.Cartesian
 ) {
     val target = targeting.invoke(location)
-    setTurnGunRight(target.theta - gunHeadingRadians)
 
-    // Only fire if the newly predicted angle is close to the old predicted angle
-    val bullet = if (abs(gunTurnRemainingRadians) <= (PI / 360)) setFireBullet(target.r) else null
+    // Only fire if there is no remaining movement from the previous turn
+    val bullet = if (gunTurnRemainingRadians == 0.0) setFireBullet(target.r) else null
     targeting.onFire(bullet)
+
+    setTurnGunRight(target.theta.radians - gunHeadingRadians)
 }

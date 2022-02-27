@@ -1,16 +1,15 @@
 package bnorm
 
+import bnorm.geo.Angle
+import bnorm.geo.*
 import kotlinx.serialization.Serializable
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 sealed class Vector {
     abstract val x: Double
     abstract val y: Double
 
-    abstract val theta: Double
+    abstract val theta: Angle
     abstract val r: Double
     abstract val r2: Double
 
@@ -24,13 +23,13 @@ sealed class Vector {
 
     @Serializable
     data class Cartesian(override val x: Double, override val y: Double) : Vector() {
-        override val theta: Double get() = atan2(x, y)
+        override val theta: Angle get() = atan2(x, y)
         override val r: Double get() = sqrt(x * x + y * y)
         override val r2: Double get() = x * x + y * y
     }
 
     @Serializable
-    data class Polar(override val theta: Double, override val r: Double) : Vector() {
+    data class Polar(override val theta: Angle, override val r: Double) : Vector() {
         override val x: Double get() = sin(theta) * r
         override val y: Double get() = cos(theta) * r
         override val r2: Double get() = r * r
@@ -39,20 +38,20 @@ sealed class Vector {
 
 fun Vector.toCartesian() = this as? Vector.Cartesian ?: Vector.Cartesian(x, y)
 fun Cartesian(x: Double, y: Double) = Vector.Cartesian(x, y)
-fun Cartesian(x: Double, y: Double, theta: Double, r: Double) =
+fun Cartesian(x: Double, y: Double, theta: Angle, r: Double) =
     Vector.Cartesian(x + sin(theta) * r, y + cos(theta) * r)
 
 fun Vector.toPolar() = this as? Vector.Polar ?: Vector.Polar(theta, r)
-fun Polar(theta: Double, r: Double) = Vector.Polar(theta, r)
+fun Polar(theta: Angle, r: Double) = Vector.Polar(theta, r)
 
-fun Vector.project(theta: Double, r: Double) =
+fun Vector.project(theta: Angle, r: Double) =
     Cartesian(x, y, theta, r)
 
-fun Vector.theta(x: Double, y: Double): Double {
+fun Vector.theta(x: Double, y: Double): Angle {
     return atan2(x - this.x, y - this.y)
 }
 
-fun Vector.theta(destination: Vector): Double {
+fun Vector.theta(destination: Vector): Angle {
     return atan2(destination.x - x, destination.y - y)
 }
 

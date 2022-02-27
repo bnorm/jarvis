@@ -7,15 +7,15 @@ import bnorm.draw.DebugKey
 import bnorm.drawCircle
 import bnorm.drawLine
 import bnorm.drawProbe
-import bnorm.geo.AngleRange
+import bnorm.geo.*
 import bnorm.minBearing
 import bnorm.parts.BattleField
-import robocode.Rules
+import bnorm.sim.ANGLE_DOWN
+import bnorm.sim.ANGLE_LEFT
+import bnorm.sim.ANGLE_RIGHT
+import bnorm.sim.getTankTurnRate
 import java.awt.Color
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.asin
-import kotlin.math.sin
 import kotlin.math.tan
 
 class WallSmoothMovement(
@@ -24,8 +24,8 @@ class WallSmoothMovement(
 ) : Movement {
     companion object {
         private fun radius(speed: Double): Double {
-            val turn = Rules.getTurnRateRadians(TANK_MAX_SPEED)
-            return (speed / 2) / tan(turn / 2)
+            val turn = getTankTurnRate(TANK_MAX_SPEED)
+            return (speed / 2) / tan(turn.radians / 2)
         }
 
         val TANK_MAX_RADIUS = radius(TANK_MAX_SPEED)
@@ -43,31 +43,31 @@ class WallSmoothMovement(
     ): Vector.Polar {
         val location = location + velocity // Turning happens after movement
 
-        val xWallAngle: Double
+        val xWallAngle: Angle
         val xWallDistance: Double
         if (2 * location.x > battleField.width) {
             // RIGHT
-            xWallAngle = PI / 2
+            xWallAngle = ANGLE_RIGHT
             xWallDistance = (battleField.width - location.x - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         } else {
             // LEFT
-            xWallAngle = 3 * PI / 2
+            xWallAngle = ANGLE_LEFT
             xWallDistance = (location.x - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         }
 
         val yWallDistance: Double
-        val yWallAngle: Double
+        val yWallAngle: Angle
         if (2 * location.y > battleField.height) {
             // TOP
-            yWallAngle = if (xWallAngle > PI) 2 * PI else 0.0
+            yWallAngle = if (xWallAngle > Angle.HALF_CIRCLE) Angle.CIRCLE else Angle.ZERO
             yWallDistance = (battleField.height - location.y - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         } else {
             // BOTTOM
-            yWallAngle = PI
+            yWallAngle = ANGLE_DOWN
             yWallDistance = (location.y - WALL_TANK_BUFFER).coerceAtLeast(0.0)
         }
 
-        val heading = velocity.theta + if (velocity.r < 0.0) PI else 0.0
+        val heading = velocity.theta + if (velocity.r < 0.0) Angle.HALF_CIRCLE else Angle.ZERO
         val xWallStick = TANK_MAX_RADIUS * (1 + abs(sin(heading - xWallAngle)))
         val yWallStick = TANK_MAX_RADIUS * (1 + abs(sin(heading - yWallAngle)))
 
@@ -86,8 +86,8 @@ class WallSmoothMovement(
             drawProbe(location, Polar(yWallAngle, yWallStick), diameter = 8)
         }
 
-        val leftAngle: Double
-        val rightAngle: Double
+        val leftAngle: Angle
+        val rightAngle: Angle
         if (xSmoothWall && ySmoothWall) {
             val xOpposite = (TANK_MAX_RADIUS - xWallDistance)
             val xDangerBearing = asin(xOpposite / TANK_MAX_RADIUS)
