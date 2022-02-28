@@ -1,4 +1,4 @@
-name: build
+name: battle
 
 on: [push, pull_request]
 
@@ -6,7 +6,7 @@ env:
   GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
 
 jobs:
-  build:
+  battle:
     runs-on: ubuntu-latest
 
     steps:

@@ -115,6 +115,10 @@ val unzipRandomMovementChallengers by tasks.registering(Copy::class) {
     includeEmptyDirs = false
 }
 
+tasks.named("compileBattlesKotlin").configure {
+    dependsOn(tasks.named("robocodeDownload"))
+}
+
 // TODO Should there be a different task for each different battle?
 val runBattles by project.tasks.registering(Test::class) {
     dependsOn("robotBin")
