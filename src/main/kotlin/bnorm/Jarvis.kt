@@ -626,7 +626,7 @@ private suspend fun RobotService.pounce(robot: Robot) {
     robot.install(VirtualGuns) {
         predictions = mapOf(
             "Direct" to DirectPrediction(self, robot),
-            "GF" to GuessFactorPrediction(self, robot) { cluster },
+            "Hybrid GF" to GuessFactorPrediction(self, robot) { cluster },
             "Virtual GF" to GuessFactorPrediction(self, robot) { realCluster },
             "Real GF" to GuessFactorPrediction(self, robot) { virtualCluster },
             "Circular" to CircularPrediction(self, robot),

@@ -107,4 +107,10 @@ val runBattles by project.tasks.registering(Test::class) {
 
     enableAssertions = false
     debug = false
+
+    jvmArgs = (jvmArgs ?: emptyList()) + listOf(
+        "-Ddebug=true",
+        "-DNOSECURITY=true",
+        "-Dsun.io.useCanonCaches=false"
+    )
 }

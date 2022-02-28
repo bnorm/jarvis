@@ -6,6 +6,7 @@ import robocode.control.BattlefieldSpecification
 import robocode.control.RobocodeEngine
 import robocode.control.RobotSpecification
 import robocode.control.events.BattleCompletedEvent
+import robocode.control.events.BattleErrorEvent
 
 fun RobocodeEngine.runBattle(
     rounds: Int = 35,
@@ -24,6 +25,13 @@ fun RobocodeEngine.runBattle(
     removeBattleListener(listener)
 
     return listener.events
-        .filterIsInstance<BattleCompletedEvent>().single()
+        .asSequence()
+        .onEach {
+            if (it is BattleErrorEvent) {
+                println("ERROR: ${it.error}")
+            }
+        }
+        .filterIsInstance<BattleCompletedEvent>()
+        .single()
         .indexedResults.toList()
 }
