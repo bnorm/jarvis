@@ -18,15 +18,10 @@ jobs:
           java-version: 11
 
       - uses: gradle/gradle-build-action@v2
-      - run: ./gradlew build
+      - run: ./gradlew runBattles
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v2
         if: always() # always run even if the previous step fails
         with:
-          report_paths: '**/build/test-results/test/TEST-*.xml'
-
-      - uses: actions/upload-artifact@v2
-        if: ${{ github.ref == 'refs/heads/main' }}
-        with:
-          path: build/robocode/robots/**/*.jar
+          report_paths: '**/build/test-results/runBattles/TEST-*.xml'

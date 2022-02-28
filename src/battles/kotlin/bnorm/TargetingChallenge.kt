@@ -3,25 +3,24 @@ package bnorm
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import robocode.control.RobocodeEngine
-import java.io.File
+import java.nio.file.Paths
 
 class TargetingChallenge {
-    private lateinit var engine: RobocodeEngine
+    private lateinit var pool: RobocodeEnginePool
 
     @BeforeEach
     fun setup() {
-        engine = RobocodeEngine(File(".robocode"))
+        pool = RobocodeEnginePool(Paths.get(".robocode"))
     }
 
     @AfterEach
     fun cleanup() {
-        engine.close()
+        pool.close()
     }
 
     @Test
     fun `Random Movement`() {
-        val challenge = engine.challenge1v1(
+        val challenge = pool.challenge1v1(
             targetBot = "bnorm.JarvisT*",
             sessions = 10,
             name = "Targeting Challenge: Random Movement",

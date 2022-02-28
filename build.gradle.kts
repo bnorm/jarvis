@@ -1,3 +1,4 @@
+import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -5,6 +6,7 @@ plugins {
     kotlin("kapt") version "1.6.10" apply false
     kotlin("plugin.serialization") version "1.6.10"
     id("com.bnorm.robocode") version "0.1.1"
+    id("de.undercouch.download") version "5.0.1"
 }
 
 version = "0.1"
@@ -93,9 +95,30 @@ dependencies {
     battlesRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
 }
 
+val downloadRandomMovementChallengers by tasks.registering(Download::class) {
+    dependsOn(tasks.named("robocodeDownload"))
+
+    src("https://drive.google.com/uc?export=download&id=1X6QRVmyct8NseLNYgOO2jEusXk53K1Jq")
+    dest(".robocode/robots/tcrm-fixed.zip")
+    overwrite(false)
+    quiet(true)
+}
+
+val unzipRandomMovementChallengers by tasks.registering(Copy::class) {
+    dependsOn(downloadRandomMovementChallengers)
+
+    from(zipTree(downloadRandomMovementChallengers.get().dest))
+    into(".robocode/robots")
+    eachFile {
+        path = path.replaceFirst("tcrm-fixed", "")
+    }
+    includeEmptyDirs = false
+}
+
 // TODO Should there be a different task for each different battle?
 val runBattles by project.tasks.registering(Test::class) {
     dependsOn("robotBin")
+    dependsOn(unzipRandomMovementChallengers)
     // TODO Download robots for battles? Or is this part of tests?
 
     description = "Runs Robocode battles"

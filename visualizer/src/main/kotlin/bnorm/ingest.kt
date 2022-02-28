@@ -1,6 +1,7 @@
 package bnorm
 
 import bnorm.debug.GuessFactorSnapshot
+import bnorm.geo.Angle
 import bnorm.kdtree.KdTree
 import bnorm.parts.gun.toGuessFactor
 import bnorm.robot.RobotScan
@@ -67,7 +68,7 @@ private fun RowDsl.dimension(values: DoubleArray) {
 fun blankSnapshot() = RobotSnapshot(
     scan = RobotScan(
         location = Vector.Cartesian(0.0, 0.0),
-        velocity = Vector.Polar(0.0, 0.0),
+        velocity = Vector.Polar(Angle.ZERO, 0.0),
         energy = 0.0,
         time = 0,
         interpolated = false
@@ -77,8 +78,8 @@ fun blankSnapshot() = RobotSnapshot(
     accelerationDirection = 0,
     wallProbe = WallProbe(
         position = WallProbe.Position(0.0, 0.0, 0.0, 0.0),
-        heading = WallProbe.Movement(0.0, 0.0, 0.0),
-        perpendicular = WallProbe.Movement(0.0, 0.0, 0.0)
+        heading = WallProbe.Movement(Angle.ZERO, 0.0, 0.0),
+        perpendicular = WallProbe.Movement(Angle.ZERO, 0.0, 0.0)
     ),
     distance = 0.0,
     lateralSpeed = 0.0,

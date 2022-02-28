@@ -3,12 +3,12 @@ package bnorm
 import robocode.BattleResults
 import robocode.control.BattleSpecification
 import robocode.control.BattlefieldSpecification
-import robocode.control.RobocodeEngine
+import robocode.control.IRobocodeEngine
 import robocode.control.RobotSpecification
 import robocode.control.events.BattleCompletedEvent
 import robocode.control.events.BattleErrorEvent
 
-fun RobocodeEngine.runBattle(
+fun IRobocodeEngine.runBattle(
     rounds: Int = 35,
     battleField: BattlefieldSpecification = BattlefieldSpecification(800, 600),
     robots: List<RobotSpecification>
