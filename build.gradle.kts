@@ -73,13 +73,8 @@ robocode {
  */
 
 val battles by sourceSets.registering
-val battlesImplementation by configurations.getting {
-    extendsFrom(configurations.robocode.get())
-}
-
-val battlesRuntimeOnly by configurations.getting {
-    extendsFrom(configurations.robocodeRuntime.get())
-}
+val battlesImplementation by configurations.getting
+val battlesRuntimeOnly by configurations.getting
 
 dependencies {
     battlesImplementation("com.jakewharton.picnic:picnic:0.5.0")
@@ -109,21 +104,14 @@ val unzipRandomMovementChallengers by tasks.registering(Copy::class) {
 
     from(zipTree(downloadRandomMovementChallengers.get().dest))
     into(".robocode/robots")
-    eachFile {
-        path = path.replaceFirst("tcrm-fixed", "")
-    }
+    eachFile { path = path.replaceFirst("tcrm-fixed", "") }
     includeEmptyDirs = false
-}
-
-tasks.named("compileBattlesKotlin").configure {
-    dependsOn(tasks.named("robocodeDownload"))
 }
 
 // TODO Should there be a different task for each different battle?
 val runBattles by project.tasks.registering(Test::class) {
     dependsOn("robotBin")
     dependsOn(unzipRandomMovementChallengers)
-    // TODO Download robots for battles? Or is this part of tests?
 
     description = "Runs Robocode battles"
     group = "battles"
@@ -132,12 +120,5 @@ val runBattles by project.tasks.registering(Test::class) {
     testClassesDirs = battles.get().output.classesDirs
     classpath = battles.get().runtimeClasspath
 
-    enableAssertions = false
-    debug = false
-
-    jvmArgs = (jvmArgs ?: emptyList()) + listOf(
-        "-Ddebug=true",
-        "-DNOSECURITY=true",
-        "-Dsun.io.useCanonCaches=false"
-    )
+    testLogging.showStandardStreams = true
 }
