@@ -313,6 +313,8 @@ open class Jarvis @JvmOverloads constructor(
     }
 
     private fun pickPower(target: Robot): Double {
+        if (!movementEnabled) return minOf(3.0, energy)
+
         val power = inversePower(target.latest.energy)
         return power.coerceAtMost(minOf(1.8, energy))
     }

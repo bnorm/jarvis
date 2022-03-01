@@ -6,21 +6,21 @@ import org.junit.jupiter.api.Test
 import java.nio.file.Paths
 
 class TargetingChallenge {
-    private lateinit var pool: RobocodeEnginePool
+    private lateinit var executor: BattleExecutor
 
     @BeforeEach
     fun setup() {
-        pool = RobocodeEnginePool(Paths.get(".robocode"))
+        executor = BattleExecutor(Paths.get(".robocode"))
     }
 
     @AfterEach
     fun cleanup() {
-        pool.close()
+        executor.close()
     }
 
     @Test
     fun `Random Movement`() {
-        val challenge = pool.challenge1v1(
+        val challenge = executor.challenge1v1(
             targetBot = "bnorm.JarvisT*",
             sessions = 10,
             name = "Targeting Challenge: Random Movement",
