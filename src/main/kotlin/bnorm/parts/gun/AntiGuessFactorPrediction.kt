@@ -6,7 +6,7 @@ import bnorm.geo.times
 import bnorm.kdtree.KdTree
 import bnorm.parts.tank.escape.escape
 import bnorm.robot.Robot
-import bnorm.robot.RobotSnapshots
+import bnorm.robot.snapshot
 import bnorm.theta
 import robocode.Rules
 
@@ -24,7 +24,7 @@ class AntiGuessFactorPrediction<T : GuessFactorSnapshot>(
 //        val robotAngle = robotAngle(distance)
 
         val heading = theta(source, target)
-        val direction = robot.context[RobotSnapshots].latest.gfDirection
+        val direction = robot.snapshot.gfDirection
         val buckets = buckets(positiveFunction(robot), negativeFunction(robot), 61)
 
         // TODO instead of buckets, use robotAngle to find the angle which the most number of angles match

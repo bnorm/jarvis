@@ -9,8 +9,8 @@ import bnorm.geo.normalizeRelative
 import bnorm.geo.tangentPoints
 import bnorm.parts.BattleField
 import bnorm.parts.gun.virtual.Wave
-import bnorm.parts.gun.virtual.WaveContext
 import bnorm.parts.tank.TANK_MAX_SPEED
+import bnorm.plugin.Context
 import bnorm.r
 import bnorm.sqr
 import bnorm.theta
@@ -26,7 +26,9 @@ data class EscapeEnvelope(
     val speed: Double,
     val circle: Circle,
 ) {
-    companion object : WaveContext.Key<EscapeEnvelope>
+    companion object {
+        val key = Context.Key<EscapeEnvelope>("EscapeEnvelope")
+    }
 
     operator fun iterator(): Iterator<Vector.Cartesian> = iterator {
         yield(leftPoint)
@@ -34,7 +36,8 @@ data class EscapeEnvelope(
     }
 }
 
-val Wave.escapeAngle: EscapeEnvelope get() = context[EscapeEnvelope]
+
+val Wave.escapeAngle: EscapeEnvelope get() = context[EscapeEnvelope.key]
 
 fun escapeCircle(
     source: Vector.Cartesian,

@@ -20,9 +20,9 @@ import bnorm.parts.tank.WallSmoothMovement
 import bnorm.parts.tank.escape.EscapeEnvelope
 import bnorm.parts.tank.escape.escapeAngle
 import bnorm.parts.tank.simulate
+import bnorm.plugin.get
 import bnorm.robot.Robot
 import bnorm.robot.RobotScan
-import bnorm.robot.snapshot
 import bnorm.robot.snapshot.WallProbe
 import bnorm.sim.ANGLE_DOWN
 import bnorm.sim.ANGLE_LEFT
@@ -72,7 +72,7 @@ fun Graphics2D.drawWave(self: RobotScan, wave: Wave, time: Long) {
 
     color = Color.yellow
     val heading = wave.context[WaveHeading]
-    val escapeEnvelope = wave.context[EscapeEnvelope]
+    val escapeEnvelope = wave.context[EscapeEnvelope.key]
     drawLine(wave.origin, wave.origin + Polar(heading - escapeEnvelope.leftAngle, radius))
     drawLine(wave.origin, wave.origin + Polar(heading + escapeEnvelope.rightAngle, radius))
 
@@ -194,9 +194,10 @@ fun Graphics2D.drawCluster(wave: Wave, time: Long) {
 
     //            println("buckets=${buckets.map { (99 * (it - min) / (max - min)).toInt() }}")
 
-    val heading = theta(wave.origin, wave.snapshot.scan.location)
+    val snapshot = wave[WaveSnapshot]
+    val heading = theta(wave.origin, snapshot.scan.location)
     val escapeAngle = wave.escapeAngle
-    val direction = wave.snapshot.gfDirection
+    val direction = snapshot.gfDirection
 
     val middle = (buckets.size - 1) / 2
     for (i in buckets.indices) {

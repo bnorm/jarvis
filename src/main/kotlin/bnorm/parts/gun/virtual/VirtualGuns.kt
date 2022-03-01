@@ -2,9 +2,10 @@ package bnorm.parts.gun.virtual
 
 import bnorm.Vector
 import bnorm.parts.gun.Prediction
+import bnorm.plugin.Context
+import bnorm.plugin.Plugin
+import bnorm.plugin.get
 import bnorm.robot.Robot
-import bnorm.robot.RobotContext
-import bnorm.robot.RobotService
 import bnorm.trace
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -19,24 +20,27 @@ class VirtualGuns(
     }
 
     class Configuration {
+        lateinit var self: Robot
         var predictions: Map<String, Prediction>? = null
     }
 
-    companion object : RobotContext.Feature<Configuration, VirtualGuns> {
-        override suspend fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): VirtualGuns {
-            val configuration = Configuration().apply(block)
+    companion object : Plugin<Robot, Configuration, VirtualGuns> {
+        override val key = Context.Key<VirtualGuns>("VirtualGuns")
+        override suspend fun install(holder: Robot, configure: Configuration.() -> Unit): VirtualGuns {
+            val configuration = Configuration().apply(configure)
+            val self = configuration.self
             val predictions = configuration.predictions!!
-            val guns = predictions.map { (k, v) -> VirtualGun(self, robot, k, v) }
+            val guns = predictions.map { (k, v) -> VirtualGun(self, holder, k, v) }
 
-            robot.onScan { scan ->
+            holder.onScan { scan ->
                 guns.forEach { it.scan(scan) }
             }
 
-            robot.onDeath {
+            holder.onDeath {
                 guns.forEach { it.death() }
             }
 
-            return VirtualGuns(self, robot, guns)
+            return VirtualGuns(self, holder, guns)
         }
     }
 
@@ -59,4 +63,4 @@ class VirtualGuns(
     }
 }
 
-val Robot.guns get() = context[VirtualGuns]
+val Robot.virtualGuns get() = this[VirtualGuns]

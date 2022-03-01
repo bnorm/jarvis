@@ -1,9 +1,10 @@
 package bnorm.parts.gun.virtual
 
+import bnorm.plugin.Context
+import bnorm.plugin.Plugin
+import bnorm.plugin.get
 import bnorm.r2
 import bnorm.robot.Robot
-import bnorm.robot.RobotContext
-import bnorm.robot.RobotService
 import bnorm.robot.snapshot.BulletSnapshot
 import bnorm.sqr
 import robocode.Rules
@@ -39,6 +40,8 @@ class VirtualWaves(
     }
 
     class Configuration {
+        lateinit var self: Robot
+
         var onWave: (suspend Wave.() -> Unit)? = null
 
         val waveListeners = mutableListOf<WaveListener>()
@@ -54,12 +57,14 @@ class VirtualWaves(
         }
     }
 
-    companion object Feature : RobotContext.Feature<Configuration, VirtualWaves> {
-        override suspend fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): VirtualWaves {
-            val configuration = Configuration().apply(block)
+    companion object : Plugin<Robot, Configuration, VirtualWaves> {
+        override val key = Context.Key<VirtualWaves>("VirtualWaves")
+
+        override suspend fun install(holder: Robot, configure: Configuration.() -> Unit): VirtualWaves {
+            val configuration = Configuration().apply(configure)
             return VirtualWaves(
-                source = self,
-                target = robot,
+                source = configuration.self,
+                target = holder,
                 onWave = configuration.onWave ?: {},
                 waveListeners = configuration.waveListeners,
                 bulletListeners = configuration.bulletListeners
@@ -75,7 +80,6 @@ class VirtualWaves(
             origin = selfLatest.location,
             speed = Rules.getBulletSpeed(power),
             time = selfLatest.time,
-            context = WaveContext()
         )
         wave.block()
         wave.onWave()
@@ -84,4 +88,4 @@ class VirtualWaves(
     }
 }
 
-val Robot.waves get() = context[VirtualWaves]
+val Robot.waves get() = this[VirtualWaves]

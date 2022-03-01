@@ -2,20 +2,19 @@ package bnorm.parts.tank
 
 import bnorm.Vector
 import bnorm.WaveHeading
+import bnorm.WaveSnapshot
 import bnorm.geo.asin
 import bnorm.guessFactor
 import bnorm.kdtree.KdTree
 import bnorm.parts.gun.GuessFactorSnapshot
 import bnorm.parts.gun.gauss
 import bnorm.parts.gun.virtual.Wave
-import bnorm.parts.gun.virtual.WaveContext
 import bnorm.parts.gun.virtual.radius
 import bnorm.parts.tank.escape.EscapeEnvelope
 import bnorm.parts.tank.escape.escape
 import bnorm.r
 import bnorm.r2
 import bnorm.robot.Robot
-import bnorm.robot.RobotSnapshots
 import bnorm.robot.attackSnapshot
 import bnorm.sqr
 import bnorm.theta
@@ -61,17 +60,16 @@ class WaveSurfMovement(
     private fun defaultWave(): SurfableWave {
         val sourceLocation = target.latest.location
         val targetLocation = self.latest.location
-        val context = WaveContext()
         val wave = Wave(
             origin = sourceLocation,
             speed = Rules.getBulletSpeed(3.0),
             time = self.latest.time,
-            context = context
         )
 
-        context[RobotSnapshots] = target.attackSnapshot
+        val context = wave.context
+        context[WaveSnapshot] = target.attackSnapshot
         context[WaveHeading] = targetLocation.theta(sourceLocation)
-        context[EscapeEnvelope] = self.battleField.escape(
+        context[EscapeEnvelope.key] = self.battleField.escape(
             source = sourceLocation,
             target = targetLocation,
             speed = wave.speed

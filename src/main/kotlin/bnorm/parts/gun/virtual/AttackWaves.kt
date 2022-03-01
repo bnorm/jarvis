@@ -1,16 +1,16 @@
 package bnorm.parts.gun.virtual
 
+import bnorm.plugin.Context
+import bnorm.plugin.Plugin
+import bnorm.plugin.get
 import bnorm.r2
 import bnorm.robot.Robot
-import bnorm.robot.RobotContext
 import bnorm.robot.RobotScan
-import bnorm.robot.RobotService
 import bnorm.robot.damage
 import bnorm.robot.snapshot.BulletSnapshot
 import bnorm.sqr
 import robocode.Rules
 import java.util.*
-import kotlin.math.abs
 
 class AttackWaves(
     private val source: Robot,
@@ -48,6 +48,8 @@ class AttackWaves(
     }
 
     class Configuration {
+        lateinit var self: Robot
+
         var onWave: (suspend Wave.(real: Boolean) -> Unit)? = null
 
         val waveListeners = mutableListOf<WaveListener>()
@@ -63,12 +65,13 @@ class AttackWaves(
         }
     }
 
-    companion object Feature : RobotContext.Feature<Configuration, AttackWaves> {
-        override suspend fun RobotService.install(robot: Robot, block: Configuration.() -> Unit): AttackWaves {
-            val configuration = Configuration().apply(block)
+    companion object : Plugin<Robot, Configuration, AttackWaves> {
+        override val key = Context.Key<AttackWaves>("AttackWave")
+        override suspend fun install(holder: Robot, configure: Configuration.() -> Unit): AttackWaves {
+            val configuration = Configuration().apply(configure)
             val attackWaves = AttackWaves(
-                source = robot,
-                target = self,
+                source = holder,
+                target = configuration.self,
                 onWave = configuration.onWave ?: {},
                 waveListeners = configuration.waveListeners,
                 bulletListeners = configuration.bulletListeners
@@ -78,7 +81,7 @@ class AttackWaves(
             var lastPower = 3.0
             var lastHeat = 3.0
             var lastFire = 0L
-            robot.onScan { scan ->
+            holder.onScan { scan ->
                 prev?.let { prev ->
                     val deltaEnergy = prev.energy - (scan.energy + scan.damage)
                     if (scan.time == prev.time + 1 && (scan.time - lastFire) * 0.1 >= lastHeat && deltaEnergy in 0.1..3.0) {
@@ -96,7 +99,7 @@ class AttackWaves(
                     bulletHit(attackWaves, scan.bulletHit, scan.time)
                 }
             }
-            robot.onDeath {
+            holder.onDeath {
                 prev = null
                 lastPower = 3.0
                 lastHeat = 3.0
@@ -137,7 +140,6 @@ class AttackWaves(
             origin = latest.location,
             speed = Rules.getBulletSpeed(power),
             time = time,
-            context = WaveContext()
         )
         wave.onWave(false)
         _predicted = wave
@@ -151,7 +153,6 @@ class AttackWaves(
             origin = latest.location,
             speed = Rules.getBulletSpeed(power),
             time = time,
-            context = WaveContext()
         )
         wave.onWave(real)
         _waves.add(wave)
@@ -159,4 +160,4 @@ class AttackWaves(
     }
 }
 
-val Robot.attackWaves get() = context[AttackWaves]
+val Robot.attackWaves get() = this[AttackWaves]

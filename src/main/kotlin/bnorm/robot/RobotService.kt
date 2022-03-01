@@ -1,6 +1,7 @@
 package bnorm.robot
 
 import bnorm.parts.BattleField
+import bnorm.plugin.Context
 import bnorm.r2
 import java.util.Collections
 
@@ -20,20 +21,10 @@ class RobotService(
 
     operator fun get(name: String): Robot? = _alive[name]
 
-    suspend fun <C : Any, V : Any, F : RobotContext.Feature<C, V>> Robot.install(
-        feature: F,
-        block: C.() -> Unit = {}
-    ): V {
-        val robot = this
-        val value = with(feature) { install(robot, block) }
-        robot.context[feature] = value
-        return value
-    }
-
     suspend fun onScan(name: String, scan: RobotScan, battleField: BattleField) {
         when (val existing = _alive[name]) {
             null -> _alive[name] = dead[name]?.apply { revive(scan) } ?: run {
-                Robot.create(name, RobotContext(), battleField, scan).also { onEnemy(it) }
+                Robot.create(name, Context(), battleField, scan).also { onEnemy(it) }
             }
             else -> {
                 val lag = scan.time - existing.latest.time
@@ -63,7 +54,7 @@ class RobotService(
 
     suspend fun onStatus(name: String, scan: RobotScan, battleField: BattleField) {
         if (_self == null) {
-            _self = Robot.create(name, RobotContext(), battleField, scan).also { onSelf(it) }
+            _self = Robot.create(name, Context(), battleField, scan).also { onSelf(it) }
         } else {
             val self = _self!!
             if (self.latest.time > scan.time) {

@@ -1,6 +1,8 @@
 package bnorm.robot
 
 import bnorm.parts.BattleField
+import bnorm.plugin.Context
+import bnorm.plugin.ContextHolder
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
@@ -9,13 +11,13 @@ typealias DeathListener = suspend () -> Unit
 
 class Robot constructor(
     val name: String,
-    val context: RobotContext,
+    override val context: Context,
     val battleField: BattleField
-) {
+) : ContextHolder {
     companion object {
         suspend fun create(
             name: String,
-            context: RobotContext,
+            context: Context,
             battleField: BattleField,
             initial: RobotScan
         ): Robot {
