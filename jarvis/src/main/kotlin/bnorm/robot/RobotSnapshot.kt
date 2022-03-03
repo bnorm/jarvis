@@ -44,6 +44,7 @@ data class RobotSnapshot(
     val cornerDistance: Double,
     val cornerDirection: Double,
     val activeWaveCount: Long,
+    val timeDeltaBulletHit: Long,
 ) : GuessFactorSnapshot {
     val gfDirection: Int get() = rotateDirection
 
@@ -57,6 +58,7 @@ data class RobotSnapshot(
     val nTimeDeltaAccelerationDirection: Double get() = normalize(timeDeltaAccelerationDirection)
     val nTimeDeltaVelocityChange: Double get() = normalize(timeDeltaVelocityChange)
     val nActiveWaveCount: Double get() = normalize(activeWaveCount)
+    val nTimeDeltaBulletHit: Double get() = normalize(timeDeltaBulletHit)
 
     val nForwardWallDistance: Double
         get() = normalize(0.0, wallProbe.perpendicular.forward, wallProbe.position.diagonal)
@@ -84,6 +86,7 @@ data class RobotSnapshot(
 //            RobotSnapshot::cornerDistance,
 //            RobotSnapshot::cornerDirection,
 //            RobotSnapshot::nActiveWaveCount,
+            RobotSnapshot::nTimeDeltaBulletHit,
         )
     }
 
@@ -129,6 +132,12 @@ fun RobotSnapshot?.timeDeltaAccelerationDirection(accelerationDirection: Int): L
 fun RobotSnapshot?.timeDeltaLateralSpeed(lateralSpeed: Double): Long {
     return if (this != null && lateralSpeed == this.lateralSpeed)
         this.timeDeltaVelocityChange + 1
+    else 0
+}
+
+private fun RobotSnapshot?.timeDeltaBulletHit(scan: RobotScan): Long {
+    return if (scan.bulletHit == null)
+        (this?.timeDeltaBulletHit ?: 1000) + 1
     else 0
 }
 
@@ -188,6 +197,7 @@ fun robotSnapshot(
     val timeDeltaRotateDirection = prevSnapshot.timeDeltaRotateDirection(accelerationDirection)
     val timeDeltaAccelerationDirection = prevSnapshot.timeDeltaAccelerationDirection(accelerationDirection)
     val timeDeltaVelocityChange = prevSnapshot.timeDeltaLateralSpeed(lateralSpeed)
+    val timeDeltaBulletHit = prevSnapshot.timeDeltaBulletHit(scan)
 
     val wallProbe = WallProbe(
         battleField,
@@ -226,5 +236,6 @@ fun robotSnapshot(
         cornerDistance = cornerDistance,
         cornerDirection = cornerDirection,
         activeWaveCount = activeWaveCount,
+        timeDeltaBulletHit = timeDeltaBulletHit,
     )
 }

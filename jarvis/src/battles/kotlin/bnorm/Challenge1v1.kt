@@ -16,9 +16,9 @@ fun BattleExecutor.challenge1v1(
     name: String,
     groups: Map<String, List<String>>
 ): Challenge = runBlocking {
-    val results = groups.values.flatten()
+    val results: Map<String, List<Double>> = groups.values.flatten()
         .asFlow()
-        .map(parallelism = 2) { enemy ->
+        .map(parallelism = Runtime.getRuntime().availableProcessors()) { enemy ->
             enemy to runSessions(targetBot, enemy, sessions, rounds)
         }
         .toList().toMap()
@@ -27,8 +27,7 @@ fun BattleExecutor.challenge1v1(
         name = name,
         sessions = sessions,
         groups = groups.map { (name, bots) ->
-            Challenge.Group(name, results.filterKeys { it in bots }
-                .map { (name, scores) -> Challenge.Result(name, scores) })
+            Challenge.Group(name, bots.map { Challenge.Result(it, results.getValue(it)) })
         }
     )
 }
