@@ -8,4 +8,5 @@ pluginManagement {
 rootProject.name = "jarvis"
 
 include(":common")
+include(":jarvis")
 include(":visualizer")

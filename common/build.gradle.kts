@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm")
     kotlin("kapt")
     kotlin("plugin.serialization")
-    id("me.champeau.gradle.jmh") version "0.5.2"
+    id("me.champeau.gradle.jmh")
 }
 
 repositories {

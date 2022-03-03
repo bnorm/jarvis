@@ -3,9 +3,9 @@
 //import bnorm.Cartesian
 //import bnorm.Polar
 //import bnorm.limit
-//import bnorm.parts.tank.TANK_ACCELERATION
-//import bnorm.parts.tank.TANK_DECELERATION
-//import bnorm.parts.tank.TANK_MAX_SPEED
+//import TANK_ACCELERATION
+//import TANK_DECELERATION
+//import TANK_MAX_SPEED
 //import bnorm.r2
 //import bnorm.signMul
 //import bnorm.theta

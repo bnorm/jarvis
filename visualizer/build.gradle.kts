@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
-    id("org.jetbrains.compose") version "1.1.0-rc01"
+    id("org.jetbrains.compose")
 }
 
 repositories {
@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":"))
+    implementation(project(":jarvis"))
     implementation(compose.desktop.currentOs)
 
     implementation("com.jakewharton.picnic:picnic:0.5.0")

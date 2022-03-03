@@ -3,8 +3,6 @@ package bnorm.parts.gun
 import bnorm.Vector
 import robocode.AdvancedRobot
 import robocode.Bullet
-import kotlin.math.PI
-import kotlin.math.abs
 
 interface Targeting {
     suspend operator fun invoke(location: Vector.Cartesian): Vector.Polar

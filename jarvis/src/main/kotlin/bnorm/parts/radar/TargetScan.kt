@@ -11,7 +11,6 @@ import bnorm.robot.RobotScan
 import bnorm.signMul
 import bnorm.sim.RADAR_MAX_TURN
 import bnorm.theta
-import robocode.util.Utils
 
 class TargetScan(
     private val radar: Radar,
