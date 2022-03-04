@@ -330,9 +330,8 @@ open class Jarvis @JvmOverloads constructor(
 
     private suspend fun fire(predicted: Vector, power: Double): Bullet? {
         return withContext(Main) {
-            val bullet = if (gunTurnRemainingRadians == 0.0) setFireBullet(power) else null
             setTurnGunRightRadians((predicted.theta - Angle(gunHeadingRadians)).normalizeRelative().radians)
-            bullet
+            if (abs(gunTurnRemainingRadians) < (Angle.HALF_CIRCLE / 360.0).radians) setFireBullet(power) else null
         }
     }
 
