@@ -3,6 +3,8 @@ package bnorm
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.flow.toList
@@ -16,18 +18,47 @@ fun BattleExecutor.challenge1v1(
     name: String,
     groups: Map<String, List<String>>
 ): Challenge = runBlocking {
-    val results: Map<String, List<Double>> = groups.values.flatten()
+    data class Paring(
+        val enemy: String,
+        val session: Int,
+        val battle: Battle,
+    )
+
+    data class Result(
+        val enemy: String,
+        val session: Int,
+        val score: Double,
+    )
+
+    val results: Map<String, List<Result>> = groups.values.flatten()
         .asFlow()
-        .map(parallelism = Runtime.getRuntime().availableProcessors()) { enemy ->
-            enemy to runSessions(targetBot, enemy, sessions, rounds)
+        .flatMapConcat { enemy ->
+            flow {
+                repeat(sessions) {
+                    emit(Paring(enemy, it, Battle(rounds = rounds, robots = listOf(targetBot, enemy))))
+                }
+            }
         }
-        .toList().toMap()
+        .map(parallelism = Runtime.getRuntime().availableProcessors()) { (enemy, session, battle) ->
+            val result = run(battle)
+                .robots
+                .single { it.name == targetBot }
+
+            val score = result.bulletDamage / rounds
+            println("Session ${session + 1} : $enemy -> $score")
+
+            Result(enemy, session, score)
+        }
+        .toList()
+        .groupBy { it.enemy }
 
     return@runBlocking Challenge(
         name = name,
         sessions = sessions,
-        groups = groups.map { (name, bots) ->
-            Challenge.Group(name, bots.map { Challenge.Result(it, results.getValue(it)) })
+        groups = groups.map { (group, bots) ->
+            Challenge.Group(group, bots.map { bot ->
+                Challenge.Result(bot, results.getValue(bot).sortedBy { it.session }.map { it.score })
+            })
         }
     )
 }
