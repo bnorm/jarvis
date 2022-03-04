@@ -96,7 +96,8 @@ fun blankSnapshot() = RobotSnapshot(
     timeDeltaVelocityChange = 0,
     cornerDistance = 0.0,
     cornerDirection = 0.0,
-    activeWaveCount = 0
+    activeWaveCount = 0,
+    timeDeltaBulletHit = 0,
 )
 
 fun resource(path: String): Path = Paths.get(ClassLoader.getSystemResource(path).toURI())

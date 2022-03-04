@@ -5,8 +5,10 @@ import com.jakewharton.picnic.RowDsl
 import com.jakewharton.picnic.TableDsl
 import com.jakewharton.picnic.TextAlignment
 import com.jakewharton.picnic.table
+import kotlinx.serialization.Serializable
 import kotlin.math.roundToLong
 
+@Serializable
 data class Challenge(
     val name: String,
     val sessions: Int,
@@ -16,6 +18,7 @@ data class Challenge(
         require(groups.asSequence().map { it.results }.flatten().map { it.scores.size }.distinct().count() == 1)
     }
 
+    @Serializable
     data class Group(
         val name: String,
         val results: List<Result>
@@ -25,6 +28,7 @@ data class Challenge(
         }
     }
 
+    @Serializable
     data class Result(
         val name: String,
         val scores: List<Double>

@@ -1,11 +1,17 @@
 package bnorm
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.nio.file.Files
 import java.nio.file.Paths
+import kotlin.io.path.writeText
 
 class TargetingChallenge {
+
+    private val json = Json { prettyPrint = true }
     private lateinit var executor: BattleExecutor
 
     @BeforeEach
@@ -20,9 +26,10 @@ class TargetingChallenge {
 
     @Test
     fun `Random Movement`() {
+        val sessions = System.getenv("BATTLE_SESSIONS")?.toIntOrNull() ?: 10
         val challenge = executor.challenge1v1(
             targetBot = "bnorm.JarvisT*",
-            sessions = 10,
+            sessions = sessions,
             name = "Targeting Challenge: Random Movement",
             groups = mapOf(
                 "Easy" to listOf(
@@ -50,6 +57,10 @@ class TargetingChallenge {
         )
         println(challenge.toTable())
         println(challenge.toWiki("[[Jarvis]]* || [[User:bnorm|bnorm]] || KNN/GF"))
+
+        val directory = Paths.get("build/battles/tc")
+        Files.createDirectories(directory)
+        directory.resolve("random_movement.json").writeText(json.encodeToString(challenge))
 
 /*
                                                                   Targeting Challenge: Random Movement
