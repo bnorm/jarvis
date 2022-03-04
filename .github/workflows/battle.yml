@@ -3,7 +3,13 @@ name: battle
 on:
   push:
   pull_request:
-  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      sessions:
+        description: 'Number of sessions'
+        required: true
+        default: 10
+        type: number
 
 env:
   GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
@@ -22,7 +28,7 @@ jobs:
 
       - uses: gradle/gradle-build-action@v2
       - env:
-          BATTLE_SESSIONS: ${{ github.event.client_payload.sessions }}
+          BATTLE_SESSIONS: ${{ github.event.inputs.sessions }}
         run: ./gradlew runBattles
 
 
