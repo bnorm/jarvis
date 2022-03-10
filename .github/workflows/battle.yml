@@ -42,5 +42,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.ref == 'refs/heads/main' && github.repository == 'bnorm/jarvis' }}
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./jarvis/build/battles
           destination_dir: ./battes/${{ github.sha }}/
