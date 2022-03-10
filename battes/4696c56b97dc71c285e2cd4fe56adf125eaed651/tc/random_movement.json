@@ -1,0 +1,111 @@
+{
+    "name": "Targeting Challenge: Random Movement",
+    "sessions": 1,
+    "groups": [
+        {
+            "name": "Easy",
+            "results": [
+                {
+                    "name": "apv.AspidMovement 1.0",
+                    "scores": [
+                        97.14285714285714
+                    ]
+                },
+                {
+                    "name": "dummy.micro.Sparrow 2.5TC",
+                    "scores": [
+                        100.0
+                    ]
+                },
+                {
+                    "name": "kawigi.mini.Fhqwhgads 1.1TC",
+                    "scores": [
+                        98.8
+                    ]
+                },
+                {
+                    "name": "emp.Yngwie 1.0",
+                    "scores": [
+                        98.48571428571428
+                    ]
+                },
+                {
+                    "name": "kawigi.sbf.FloodMini 1.4TC",
+                    "scores": [
+                        97.65714285714286
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Medium",
+            "results": [
+                {
+                    "name": "abc.Tron 2.01",
+                    "scores": [
+                        83.65714285714286
+                    ]
+                },
+                {
+                    "name": "wiki.etc.HTTC 1.0",
+                    "scores": [
+                        84.54285714285714
+                    ]
+                },
+                {
+                    "name": "wiki.etc.RandomMovementBot 1.0",
+                    "scores": [
+                        90.48571428571428
+                    ]
+                },
+                {
+                    "name": "davidalves.micro.DuelistMicro 2.0TC",
+                    "scores": [
+                        79.11428571428571
+                    ]
+                },
+                {
+                    "name": "gh.GrubbmGrb 1.2.4TC",
+                    "scores": [
+                        89.02857142857142
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Hard",
+            "results": [
+                {
+                    "name": "pe.SandboxDT 1.91TC",
+                    "scores": [
+                        90.17142857142858
+                    ]
+                },
+                {
+                    "name": "cx.mini.Cigaret 1.31TC",
+                    "scores": [
+                        70.62857142857143
+                    ]
+                },
+                {
+                    "name": "kc.Fortune 1.0",
+                    "scores": [
+                        88.34285714285714
+                    ]
+                },
+                {
+                    "name": "simonton.micro.WeeklongObsession 1.5TC",
+                    "scores": [
+                        91.45714285714286
+                    ]
+                },
+                {
+                    "name": "jam.micro.RaikoMicro 1.44TC",
+                    "scores": [
+                        78.08571428571429
+                    ]
+                }
+            ]
+        }
+    ]
+}
