@@ -8,7 +8,6 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }
 
 dependencies {
@@ -16,9 +15,9 @@ dependencies {
     implementation(project(":jarvis"))
     implementation(compose.desktop.currentOs)
 
-    implementation("com.jakewharton.picnic:picnic:0.5.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation("com.jakewharton.picnic:picnic:0.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
 }
 
 tasks.withType<KotlinCompile> {

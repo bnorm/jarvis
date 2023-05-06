@@ -16,13 +16,13 @@ repositories {
 
 dependencies {
     implementation(project(":common"))
-    implementation("com.jakewharton.picnic:picnic:0.5.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    implementation("com.jakewharton.picnic:picnic:0.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
 
     testImplementation(kotlin("test-junit5"))
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
 }
 
 tasks.withType<KotlinCompile> {
@@ -76,17 +76,13 @@ val battlesImplementation by configurations.getting
 val battlesRuntimeOnly by configurations.getting
 
 dependencies {
-    battlesImplementation("com.jakewharton.picnic:picnic:0.5.0")
-
-    battlesImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.6.0")
-    battlesImplementation("com.squareup.retrofit2:retrofit:2.9.0")
-    battlesImplementation("com.squareup.okhttp3:okhttp:4.9.3")
-    battlesImplementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.8.0")
-    battlesImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+    battlesImplementation("com.jakewharton.picnic:picnic:0.6.0")
+    battlesImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.7.0")
+    battlesImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
 
     battlesImplementation(kotlin("test-junit5"))
-    battlesImplementation("org.junit.jupiter:junit-jupiter-api:5.8.2")
-    battlesRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+    battlesImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
+    battlesRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
 }
 
 val downloadRandomMovementChallengers by tasks.registering(Download::class) {

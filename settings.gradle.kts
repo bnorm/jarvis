@@ -9,4 +9,5 @@ rootProject.name = "jarvis"
 
 include(":common")
 include(":jarvis")
+//include(":training")
 include(":visualizer")
