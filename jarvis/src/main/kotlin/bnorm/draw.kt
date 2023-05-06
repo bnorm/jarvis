@@ -28,9 +28,6 @@ import bnorm.sim.ANGLE_DOWN
 import bnorm.sim.ANGLE_LEFT
 import bnorm.sim.ANGLE_RIGHT
 import bnorm.sim.ANGLE_UP
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.takeWhile
-import kotlinx.coroutines.runBlocking
 import robocode.Rules
 import java.awt.Color
 import java.awt.Graphics2D
@@ -238,13 +235,13 @@ fun Graphics2D.draw(
     drawProbe(location, wallProbe.perpendicular.backward(), 8)
 }
 
-fun Graphics2D.draw(robot: Robot, movement: Movement) = runBlocking {
+fun Graphics2D.draw(robot: Robot, movement: Movement) {
     robot.simulate(movement)
         .take(25)
-        .collect { fillCircle(it, 4) }
+        .forEach { fillCircle(it, 4) }
 }
 
-fun Graphics2D.drawPath(source: Robot, target: Robot, moveDirection: Int) = runBlocking {
+fun Graphics2D.drawPath(source: Robot, target: Robot, moveDirection: Int) {
     val sourceLocation = source.latest.location
     val speed = Rules.getBulletSpeed(3.0)
 
@@ -269,6 +266,6 @@ fun Graphics2D.drawPath(source: Robot, target: Robot, moveDirection: Int) = runB
         var time = 0
         target.simulate(movement)
             .takeWhile { sqr(time++ * speed) <= sourceLocation.r2(it) }
-            .collect { drawCircle(it, 2.0) }
+            .forEach { drawCircle(it, 2.0) }
     }
 }

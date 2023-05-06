@@ -10,13 +10,13 @@ import bnorm.sqr
 import robocode.Rules
 import java.util.*
 
-typealias WaveListener = suspend (wave: Wave) -> Unit
-typealias BulletListener = suspend (wave: Wave, bullet: BulletSnapshot) -> Unit
+typealias WaveListener = (wave: Wave) -> Unit
+typealias BulletListener = (wave: Wave, bullet: BulletSnapshot) -> Unit
 
 class VirtualWaves(
     private val source: Robot,
     private val target: Robot,
-    private val onWave: suspend Wave.() -> Unit,
+    private val onWave: Wave.() -> Unit,
     private val waveListeners: List<WaveListener>,
     private val bulletListeners: List<BulletListener>,
 ) {
@@ -42,7 +42,7 @@ class VirtualWaves(
     class Configuration {
         lateinit var self: Robot
 
-        var onWave: (suspend Wave.() -> Unit)? = null
+        var onWave: (Wave.() -> Unit)? = null
 
         val waveListeners = mutableListOf<WaveListener>()
 
@@ -60,7 +60,7 @@ class VirtualWaves(
     companion object : Plugin<Robot, Configuration, VirtualWaves> {
         override val key = Context.Key<VirtualWaves>("VirtualWaves")
 
-        override suspend fun install(holder: Robot, configure: Configuration.() -> Unit): VirtualWaves {
+        override fun install(holder: Robot, configure: Configuration.() -> Unit): VirtualWaves {
             val configuration = Configuration().apply(configure)
             return VirtualWaves(
                 source = configuration.self,
@@ -72,7 +72,7 @@ class VirtualWaves(
         }
     }
 
-    suspend fun fire(power: Double, block: suspend Wave.() -> Unit): Wave? {
+    fun fire(power: Double, block: Wave.() -> Unit): Wave? {
         if (power <= 0.0) return null
 
         val selfLatest = source.latest

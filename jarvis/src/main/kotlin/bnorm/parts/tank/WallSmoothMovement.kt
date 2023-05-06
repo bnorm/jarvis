@@ -32,7 +32,7 @@ class WallSmoothMovement(
         const val WALL_TANK_BUFFER = TANK_SIZE / 2 + 1
     }
 
-    override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
+    override fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
         return smooth(location, velocity, movement.invoke(location, velocity))
     }
 

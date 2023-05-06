@@ -7,8 +7,6 @@ import bnorm.plugin.Plugin
 import bnorm.plugin.get
 import bnorm.robot.Robot
 import bnorm.trace
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 
 class VirtualGuns(
     private val source: Robot,
@@ -26,7 +24,7 @@ class VirtualGuns(
 
     companion object : Plugin<Robot, Configuration, VirtualGuns> {
         override val key = Context.Key<VirtualGuns>("VirtualGuns")
-        override suspend fun install(holder: Robot, configure: Configuration.() -> Unit): VirtualGuns {
+        override fun install(holder: Robot, configure: Configuration.() -> Unit): VirtualGuns {
             val configuration = Configuration().apply(configure)
             val self = configuration.self
             val predictions = configuration.predictions!!
@@ -50,16 +48,12 @@ class VirtualGuns(
 
     val best: Prediction get() = guns.maxByOrNull { it.success }!!.prediction
 
-    suspend fun fire(power: Double): Vector {
+    fun fire(power: Double): Vector {
         if (power <= 0.0) return target.latest.location - source.latest.location
 
-        return coroutineScope {
-            guns.map { gun ->
-                gun.success to async {
-                    trace("gun-${gun.name}") { gun.fire(power) }
-                }
-            }
-        }.maxByOrNull { it.first }!!.second.await()
+        return guns.map { gun ->
+            gun.success to trace("gun-${gun.name}") { gun.fire(power) }
+        }.maxBy { it.first }.second
     }
 }
 

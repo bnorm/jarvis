@@ -18,11 +18,6 @@ import bnorm.robot.Robot
 import bnorm.robot.attackSnapshot
 import bnorm.sqr
 import bnorm.theta
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.produceIn
-import kotlinx.coroutines.flow.transformWhile
 import robocode.Rules
 import java.util.PriorityQueue
 import kotlin.math.abs
@@ -42,17 +37,15 @@ class WaveSurfMovement(
     val forward = WallSmoothMovement(target.battleField, OrbitMovement(target, distance, 1.0))
     val backward = WallSmoothMovement(target.battleField, OrbitMovement(target, distance, -1.0))
 
-    override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
+    override fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
         val waves = wavesFunction().takeIf { it.isNotEmpty() } ?: listOf(defaultWave())
 //            .filter { sqr(it.wave.radius(self.latest.time + 3)) <= it.wave.origin.r2(self.latest.location) }
 
-        val choice = coroutineScope {
-            minimum(
-                Option(backward, risk(backward, self.latest.time, waves)),
-                Option(forward, risk(forward, self.latest.time, waves)),
-                Option(stop, risk(stop, self.latest.time, waves)),
-            )
-        }
+        val choice = minimum(
+            Option(backward, risk(backward, self.latest.time, waves)),
+            Option(forward, risk(forward, self.latest.time, waves)),
+            Option(stop, risk(stop, self.latest.time, waves)),
+        )
 
         return (choice ?: stop).invoke(location, velocity)
     }
@@ -78,24 +71,24 @@ class WaveSurfMovement(
         return SurfableWave(wave, emptyList())
     }
 
-    private suspend fun Option(
+    private fun Option(
         key: Movement,
-        remaining: ReceiveChannel<Double>,
+        remaining: Iterator<Double>,
     ): Option<Movement, Double>? {
-        val next = remaining.receiveCatching().getOrNull() ?: return null
+        val next = if (remaining.hasNext()) remaining.next() else return null
         return Option(key, next, remaining)
     }
 
     private class Option<K, V : Comparable<V>>(
         val key: K,
-        var head: V,
-        val remaining: ReceiveChannel<V>,
+        var value: V,
+        val remaining: Iterator<V>,
     ) : Comparable<Option<K, V>> {
         override fun compareTo(other: Option<K, V>): Int =
-            compareValues(head, other.head)
+            compareValues(value, other.value)
     }
 
-    private suspend fun <K : Any, V : Comparable<V>> minimum(
+    private fun <K : Any, V : Comparable<V>> minimum(
         vararg options: Option<K, V>?,
     ): K? {
         val queue = PriorityQueue<Option<K, V>>(Comparator.reverseOrder())
@@ -103,34 +96,24 @@ class WaveSurfMovement(
 
         while (queue.size > 1) {
             val head = queue.remove()
-            val next = head.remaining.receiveCatching().getOrNull() ?: continue
-            head.head = next
+            val next = if (head.remaining.hasNext()) head.remaining.next() else continue
+            head.value = next
             queue.add(head)
-        }
-
-        for (option in options) {
-            // Cancel anything unconsumed
-            option?.remaining?.cancel()
         }
 
         return queue.poll()?.key
     }
 
-    private fun CoroutineScope.risk(
+    private fun risk(
         movement: WallSmoothMovement,
         startTime: Long,
         waves: List<SurfableWave>,
-    ): ReceiveChannel<Double> {
+    ): Iterator<Double> {
         var currTime = startTime
         return self.simulate(movement)
-            .transformWhile { location ->
-                if (waves.waveBreak(location, currTime++)) {
-                    val danger = waves.sumOf { it.toDanger(location, startTime) }
-                    emit(danger)
-                    true
-                } else false
-            }
-            .produceIn(this)
+            .takeWhile { location -> waves.waveBreak(location, currTime++) }
+            .map { location -> waves.sumOf { it.toDanger(location, startTime) } }
+            .iterator()
     }
 
     private fun List<SurfableWave>.waveBreak(location: Vector.Cartesian, time: Long): Boolean =

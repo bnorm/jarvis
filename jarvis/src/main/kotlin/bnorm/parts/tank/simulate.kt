@@ -8,8 +8,6 @@ import bnorm.geo.intersect
 import bnorm.parts.BattleField
 import bnorm.robot.Robot
 import bnorm.sim.getTankTurnRate
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 
 fun Robot.simulate(movement: Movement) =
     battleField.simulate(latest.location, latest.velocity, movement)
@@ -18,11 +16,11 @@ fun BattleField.simulate(
     location: Vector.Cartesian,
     velocity: Vector.Polar,
     movement: Movement,
-): Flow<Vector.Cartesian> {
+): Sequence<Vector.Cartesian> {
     // https://robowiki.net/wiki/Robocode/Game_Physics#Robocode_processing_loop
 
     val battleField = this
-    return flow {
+    return sequence {
         var location = location
         var velocity = velocity
         while (true) {
@@ -38,7 +36,7 @@ fun BattleField.simulate(
             } else {
                 next
             }
-            emit(location)
+            yield(location)
             velocity = v
         }
     }

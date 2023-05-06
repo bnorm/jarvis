@@ -6,8 +6,8 @@ import bnorm.plugin.ContextHolder
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-typealias ScanListener = suspend (scan: RobotScan) -> Unit
-typealias DeathListener = suspend () -> Unit
+typealias ScanListener = (scan: RobotScan) -> Unit
+typealias DeathListener = () -> Unit
 
 class Robot constructor(
     val name: String,
@@ -15,7 +15,7 @@ class Robot constructor(
     val battleField: BattleField
 ) : ContextHolder {
     companion object {
-        suspend fun create(
+        fun create(
             name: String,
             context: Context,
             battleField: BattleField,
@@ -38,20 +38,20 @@ class Robot constructor(
 
     val history: Sequence<RobotScan> get() = generateSequence(latest) { it.prev }
 
-    suspend fun scan(scan: RobotScan) {
+    fun scan(scan: RobotScan) {
         scan.prev = _latest
         _latest = scan
-        _snapshots.emit(scan)
+        _snapshots.tryEmit(scan)
         scanListeners.forEach { it.invoke(scan) }
     }
 
-    suspend fun kill() {
+    fun kill() {
         deathListeners.forEach { it.invoke() }
     }
 
-    suspend fun revive(scan: RobotScan) {
+    fun revive(scan: RobotScan) {
         _latest = scan
-        _snapshots.emit(scan)
+        _snapshots.tryEmit(scan)
         scanListeners.forEach { it.invoke(scan) }
     }
 

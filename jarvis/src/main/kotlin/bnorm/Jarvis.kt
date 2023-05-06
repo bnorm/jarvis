@@ -19,8 +19,8 @@ import bnorm.parts.gun.virtual.VirtualGuns
 import bnorm.parts.gun.virtual.VirtualWaves
 import bnorm.parts.gun.virtual.Wave
 import bnorm.parts.gun.virtual.attackWaves
-import bnorm.parts.gun.virtual.virtualGuns
 import bnorm.parts.gun.virtual.radius
+import bnorm.parts.gun.virtual.virtualGuns
 import bnorm.parts.gun.virtual.waves
 import bnorm.parts.radar.AdaptiveScan
 import bnorm.parts.radar.Radar
@@ -302,7 +302,7 @@ open class Jarvis @JvmOverloads constructor(
                                 trace("parts.gun") {
                                     val power = pickPower(target)
                                     val prediction = trace("aiming") { target.virtualGuns.best.predict(power) }
-                                    val bullet = fire(prediction, power)
+                                    val bullet = withContext(Main) { fire(prediction, power) }
                                     if (bullet != null) trace("bullets") { target.virtualGuns.fire(power) }
                                     trace("waves") {
                                         target.waves.fire(power) {
@@ -328,11 +328,9 @@ open class Jarvis @JvmOverloads constructor(
     private fun inversePower(damage: Double): Double =
         if (damage > 4.0) (damage - 2.0) / 6.0 else damage / 4.0
 
-    private suspend fun fire(predicted: Vector, power: Double): Bullet? {
-        return withContext(Main) {
-            setTurnGunRightRadians((predicted.theta - Angle(gunHeadingRadians)).normalizeRelative().radians)
-            if (abs(gunTurnRemainingRadians) < (Angle.HALF_CIRCLE / 360.0).radians) setFireBullet(power) else null
-        }
+    private fun fire(predicted: Vector, power: Double): Bullet? {
+        setTurnGunRightRadians((predicted.theta - Angle(gunHeadingRadians)).normalizeRelative().radians)
+        return if (abs(gunTurnRemainingRadians) < (Angle.HALF_CIRCLE / 360.0).radians) setFireBullet(power) else null
     }
 
     suspend fun Movement.move() {
@@ -607,7 +605,7 @@ private fun trainDimensionScales(
 }
 
 
-private suspend fun RobotService.pounce(robot: Robot) {
+private fun RobotService.pounce(robot: Robot) {
     val service = this
     val virtualTreeNetwork = NeuralNetwork(RobotSnapshot.DIMENSIONS.size, 1) { _, _ -> 1.0 }
     val virtualTree = KdTree(

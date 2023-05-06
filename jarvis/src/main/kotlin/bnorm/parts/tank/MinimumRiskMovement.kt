@@ -31,7 +31,7 @@ class MinimumRiskMovement(
     private var destination: Vector.Cartesian? = null
     private var previous: Vector.Cartesian? = null
 
-    override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
+    override fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
         val scans = aliveRobots.map { it.latest }
         val closest = scans.minByOrNull { location.r2(it.location) }
 

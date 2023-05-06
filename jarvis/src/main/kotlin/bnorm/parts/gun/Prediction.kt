@@ -11,23 +11,23 @@ interface Prediction {
 
 fun Prediction.toTargeting(powerFunction: () -> Double): Targeting {
     return object : Targeting {
-        override suspend fun invoke(location: Vector.Cartesian): Vector.Polar {
+        override fun invoke(location: Vector.Cartesian): Vector.Polar {
             val power = powerFunction()
             val prediction = predict(power)
             return Polar(location.theta(prediction), power)
         }
 
-        override suspend fun onFire(bullet: Bullet?) = Unit
+        override fun onFire(bullet: Bullet?) = Unit
     }
 }
 
 fun Prediction.toTargeting(power: Double): Targeting {
     return object : Targeting {
-        override suspend fun invoke(location: Vector.Cartesian): Vector.Polar {
+        override fun invoke(location: Vector.Cartesian): Vector.Polar {
             val prediction = predict(power)
             return Polar(location.theta(prediction), power)
         }
 
-        override suspend fun onFire(bullet: Bullet?) = Unit
+        override fun onFire(bullet: Bullet?) = Unit
     }
 }

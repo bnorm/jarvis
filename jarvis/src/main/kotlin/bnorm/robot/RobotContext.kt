@@ -2,7 +2,7 @@ package bnorm.robot
 
 class RobotContext {
     interface Feature<C : Any, V : Any> {
-        suspend fun RobotService.install(robot: Robot, block: C.() -> Unit): V
+        fun RobotService.install(robot: Robot, block: C.() -> Unit): V
     }
 
     private val map = mutableMapOf<Feature<*, *>, Any>()

@@ -4,10 +4,10 @@ package bnorm.plugin
 
 interface Plugin<Holder : ContextHolder, Configuration : Any, Value : Any> {
     val key: Context.Key<Value>
-    suspend fun install(holder: Holder, configure: Configuration.() -> Unit): Value
+    fun install(holder: Holder, configure: Configuration.() -> Unit): Value
 }
 
-suspend fun <Holder : ContextHolder, Configuration : Any, Value : Any> Holder.install(
+fun <Holder : ContextHolder, Configuration : Any, Value : Any> Holder.install(
     plugin: Plugin<Holder, Configuration, Value>,
     configure: Configuration.() -> Unit = {}
 ): Value = when (val installed = context.find(plugin.key)) {

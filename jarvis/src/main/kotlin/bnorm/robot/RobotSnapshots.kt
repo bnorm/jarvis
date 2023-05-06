@@ -18,7 +18,7 @@ class RobotSnapshots(
     companion object : Plugin<Robot, Configuration, RobotSnapshots> {
         override val key = Context.Key<RobotSnapshots>("RobotSnapshots")
 
-        override suspend fun install(holder: Robot, configure: Configuration.() -> Unit): RobotSnapshots {
+        override fun install(holder: Robot, configure: Configuration.() -> Unit): RobotSnapshots {
             val configuration = Configuration().apply(configure)
             val factory = configuration.factory
             val snapshots = RobotSnapshots(factory.create(holder.latest, null))

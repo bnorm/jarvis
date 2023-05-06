@@ -22,7 +22,7 @@ class OrbitMovement(
     private val radius: Double,
     private val direction: Double
 ) : Movement {
-    override suspend fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
+    override fun invoke(location: Vector.Cartesian, velocity: Vector.Polar): Vector.Polar {
         val targetLocation = target.latest.location
         val theta = location.theta(targetLocation)
         val distance = location.r(targetLocation)

@@ -190,7 +190,7 @@
 //
 //@OptIn(ExperimentalTypeInference::class)
 //fun <T, R> Sequence<T>.transform(
-//    @BuilderInference block: suspend SequenceScope<R>.(value: T) -> Unit
+//    @BuilderInference block: SequenceScope<R>.(value: T) -> Unit
 //): Sequence<R> = sequence {
 //    forEach { value ->
 //        block(value)
@@ -199,7 +199,7 @@
 //
 //@OptIn(ExperimentalTypeInference::class)
 //fun <T, R> Sequence<T>.transformIndexed(
-//    @BuilderInference block: suspend SequenceScope<R>.(index: Int, value: T) -> Unit
+//    @BuilderInference block: SequenceScope<R>.(index: Int, value: T) -> Unit
 //): Sequence<R> = sequence {
 //    forEachIndexed { index, value ->
 //        block(index, value)
@@ -276,7 +276,7 @@
 //}
 //
 //fun <T> List<T>.permutations(): Sequence<List<T>> {
-//    suspend fun <T> SequenceScope<List<T>>.recursive(values: MutableList<T>, size: Int) {
+//    fun <T> SequenceScope<List<T>>.recursive(values: MutableList<T>, size: Int) {
 //        fun swap(i: Int, j: Int) {
 //            val temp = values[i]
 //            values[i] = values[j]

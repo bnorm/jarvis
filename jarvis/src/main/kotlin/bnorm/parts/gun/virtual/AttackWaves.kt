@@ -15,7 +15,7 @@ import java.util.*
 class AttackWaves(
     private val source: Robot,
     private val target: Robot,
-    private val onWave: suspend Wave.(real: Boolean) -> Unit,
+    private val onWave: Wave.(real: Boolean) -> Unit,
     private val waveListeners: List<WaveListener>,
     private val bulletListeners: List<BulletListener>,
 ) {
@@ -50,7 +50,7 @@ class AttackWaves(
     class Configuration {
         lateinit var self: Robot
 
-        var onWave: (suspend Wave.(real: Boolean) -> Unit)? = null
+        var onWave: (Wave.(real: Boolean) -> Unit)? = null
 
         val waveListeners = mutableListOf<WaveListener>()
 
@@ -67,7 +67,7 @@ class AttackWaves(
 
     companion object : Plugin<Robot, Configuration, AttackWaves> {
         override val key = Context.Key<AttackWaves>("AttackWave")
-        override suspend fun install(holder: Robot, configure: Configuration.() -> Unit): AttackWaves {
+        override fun install(holder: Robot, configure: Configuration.() -> Unit): AttackWaves {
             val configuration = Configuration().apply(configure)
             val attackWaves = AttackWaves(
                 source = holder,
@@ -110,7 +110,7 @@ class AttackWaves(
             return attackWaves
         }
 
-        private suspend fun bulletHit(attackWaves: AttackWaves, bullet: BulletSnapshot, time: Long) {
+        private fun bulletHit(attackWaves: AttackWaves, bullet: BulletSnapshot, time: Long) {
             for (wave in attackWaves._waves) {
                 val bulletDistance = wave.origin.r2(bullet.location)
                 val range = sqr(wave.radius(time - 1))..sqr(wave.radius(time + 1))
@@ -132,7 +132,7 @@ class AttackWaves(
         }
     }
 
-    private suspend fun predict(power: Double, time: Long) {
+    private fun predict(power: Double, time: Long) {
         if (power <= 0.0) return
 
         val latest = source.latest
@@ -145,7 +145,7 @@ class AttackWaves(
         _predicted = wave
     }
 
-    private suspend fun fire(real: Boolean, power: Double, time: Long): Wave? {
+    private fun fire(real: Boolean, power: Double, time: Long): Wave? {
         if (power <= 0.0) return null
 
         val latest = source.latest

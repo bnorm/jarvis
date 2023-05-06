@@ -5,12 +5,12 @@ import robocode.AdvancedRobot
 import robocode.Bullet
 
 interface Targeting {
-    suspend operator fun invoke(location: Vector.Cartesian): Vector.Polar
+    operator fun invoke(location: Vector.Cartesian): Vector.Polar
 
-    suspend fun onFire(bullet: Bullet?)
+    fun onFire(bullet: Bullet?)
 }
 
-suspend fun AdvancedRobot.target(
+fun AdvancedRobot.target(
     targeting: Targeting,
     location: Vector.Cartesian
 ) {

@@ -6,8 +6,8 @@ import bnorm.r2
 import java.util.Collections
 
 class RobotService(
-    private val onSelf: suspend RobotService.(Robot) -> Unit,
-    private val onEnemy: suspend RobotService.(Robot) -> Unit,
+    private val onSelf: RobotService.(Robot) -> Unit,
+    private val onEnemy: RobotService.(Robot) -> Unit,
 ) {
     private val _alive = Collections.synchronizedMap(mutableMapOf<String, Robot>())
     val alive: Collection<Robot> = _alive.values
@@ -21,7 +21,7 @@ class RobotService(
 
     operator fun get(name: String): Robot? = _alive[name]
 
-    suspend fun onScan(name: String, scan: RobotScan, battleField: BattleField) {
+    fun onScan(name: String, scan: RobotScan, battleField: BattleField) {
         when (val existing = _alive[name]) {
             null -> _alive[name] = dead[name]?.apply { revive(scan) } ?: run {
                 Robot.create(name, Context(), battleField, scan).also { onEnemy(it) }
@@ -52,7 +52,7 @@ class RobotService(
         }
     }
 
-    suspend fun onStatus(name: String, scan: RobotScan, battleField: BattleField) {
+    fun onStatus(name: String, scan: RobotScan, battleField: BattleField) {
         if (_self == null) {
             _self = Robot.create(name, Context(), battleField, scan).also { onSelf(it) }
         } else {
@@ -65,7 +65,7 @@ class RobotService(
         }
     }
 
-    suspend fun onKill(name: String) {
+    fun onKill(name: String) {
         val existing = _alive.remove(name)
         if (existing != null) {
             existing.kill()
@@ -73,7 +73,7 @@ class RobotService(
         }
     }
 
-    suspend fun onRoundEnd() {
+    fun onRoundEnd() {
         for ((name, existing) in _alive) {
             existing.kill()
             dead[name] = existing
