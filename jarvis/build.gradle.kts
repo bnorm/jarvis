@@ -85,28 +85,8 @@ dependencies {
     battlesRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
 }
 
-val downloadRandomMovementChallengers by tasks.registering(Download::class) {
-    dependsOn(tasks.named("robocodeDownload"))
-
-    src("https://drive.google.com/uc?export=download&id=1X6QRVmyct8NseLNYgOO2jEusXk53K1Jq")
-    dest(".robocode/robots/tcrm-fixed.zip")
-    overwrite(false)
-    quiet(true)
-}
-
-val unzipRandomMovementChallengers by tasks.registering(Copy::class) {
-    dependsOn(downloadRandomMovementChallengers)
-
-    from(zipTree(downloadRandomMovementChallengers.get().dest))
-    into(".robocode/robots")
-    eachFile { path = path.replaceFirst("tcrm-fixed", "") }
-    includeEmptyDirs = false
-}
-
-// TODO Should there be a different task for each different battle?
 val runBattles by project.tasks.registering(Test::class) {
     dependsOn("robotBin")
-    dependsOn(unzipRandomMovementChallengers)
 
     description = "Runs Robocode battles"
     group = "battles"

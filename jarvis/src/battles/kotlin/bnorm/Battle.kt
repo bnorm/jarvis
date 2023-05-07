@@ -16,11 +16,15 @@ data class Battle(
 }
 
 fun Battle.write(path: Path) {
+    val selectedRobots = robots.joinToString(",") {
+        if (!it.endsWith(".jar")) it
+        else it.replace("_", " ").replace(".jar", "")
+    }
     path.writeText(
         text = """
             #Battle Properties
             robocode.battle.numRounds=${rounds}
-            robocode.battle.selectedRobots=${robots.joinToString(",")}
+            robocode.battle.selectedRobots=$selectedRobots
             robocode.battleField.width=${battleField.width}
             robocode.battleField.height=${battleField.height}
             """.trimIndent(),

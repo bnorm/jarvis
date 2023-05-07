@@ -25,12 +25,13 @@ fun BattleExecutor.challenge1v1(
     )
 
     data class Result(
-        val enemy: String,
+        val name: String,
         val session: Int,
         val score: Double,
     )
 
-    val results: Map<String, List<Result>> = groups.values.flatten()
+    val enemies = groups.values.flatten()
+    val results: Map<String, List<Result>> = enemies
         .asFlow()
         .flatMapConcat { enemy ->
             flow {
@@ -40,24 +41,27 @@ fun BattleExecutor.challenge1v1(
             }
         }
         .map(parallelism = Runtime.getRuntime().availableProcessors()) { (enemy, session, battle) ->
+            val name = enemy.replace(".jar", "").replace("_", " ")
             val result = run(battle)
                 .robots
                 .single { it.name == targetBot }
 
             val score = result.bulletDamage / rounds
-            println("Session ${session + 1} : $enemy -> $score")
+            println("Session ${session + 1} : $name -> $score")
 
-            Result(enemy, session, score)
+            Result(name, session, score)
         }
         .toList()
-        .groupBy { it.enemy }
+        .groupBy { it.name }
 
     return@runBlocking Challenge(
         name = name,
         sessions = sessions,
-        groups = groups.map { (group, bots) ->
+        groups = groups.mapNotNull { (group, bots) ->
+            if (bots.isEmpty()) return@mapNotNull null
             Challenge.Group(group, bots.map { bot ->
-                Challenge.Result(bot, results.getValue(bot).sortedBy { it.session }.map { it.score })
+                val botName = bot.replace(".jar", "").replace("_", " ")
+                Challenge.Result(botName, results.getValue(botName).sortedBy { it.session }.map { it.score })
             })
         }
     )

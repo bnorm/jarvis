@@ -6,6 +6,8 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
+import kotlin.io.path.copyTo
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.notExists
 import kotlin.io.path.readText
@@ -52,6 +54,14 @@ class BattleExecutor(
         suspend fun run(battle: Battle): Results = runInterruptible(Dispatchers.IO) {
             val battleFile = workerHome.resolve("battles").resolve("worker.battle")
             val resultsFile = workerHome.resolve("results.txt")
+
+            // Copy bot jar files to worker directory
+            for (robot in battle.robots) {
+                if (robot.endsWith(".jar")) {
+                    Paths.get(ClassLoader.getSystemResource(robot).toURI())
+                        .copyTo(workerHome.resolve("robots").resolve(robot), overwrite = true)
+                }
+            }
 
             battle.write(battleFile)
             try {
