@@ -1,11 +1,9 @@
-import de.undercouch.gradle.tasks.download.Download
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     id("com.bnorm.robocode")
-    id("de.undercouch.download")
 }
 
 version = "0.1"

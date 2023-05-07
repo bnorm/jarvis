@@ -31,7 +31,6 @@ jobs:
           BATTLE_SESSIONS: ${{ github.event.inputs.sessions }}
         run: ./gradlew runBattles
 
-
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v2
         if: always() # always run even if the previous step fails
@@ -44,4 +43,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./jarvis/build/battles
+          publish_branch: battles
           destination_dir: ./battes/${{ github.sha }}/

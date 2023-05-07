@@ -34,24 +34,24 @@ class TargetingChallenge {
             groups = mapOf(
                 "Easy" to listOf(
                     "apv.AspidMovement_1.0.jar",
-//                    "dummy.micro.Sparrow_2.5TC.jar",
-//                    "kawigi.mini.Fhqwhgads_1.1TC.jar",
-//                    "emp.Yngwie_1.0.jar",
-//                    "kawigi.sbf.FloodMini_1.4TC.jar",
+                    "dummy.micro.Sparrow_2.5TC.jar",
+                    "kawigi.mini.Fhqwhgads_1.1TC.jar",
+                    "emp.Yngwie_1.0.jar",
+                    "kawigi.sbf.FloodMini_1.4TC.jar",
                 ),
                 "Medium" to listOf(
                     "abc.Tron_2.01.jar",
-//                    "wiki.etc.HTTC_1.0.jar",
-//                    "wiki.etc.RandomMovementBot_1.0.jar",
-//                    "davidalves.micro.DuelistMicro_2.0TC.jar",
-//                    "gh.GrubbmGrb_1.2.4TC.jar",
+                    "wiki.etc.HTTC_1.0.jar",
+                    "wiki.etc.RandomMovementBot_1.0.jar",
+                    "davidalves.micro.DuelistMicro_2.0TC.jar",
+                    "gh.GrubbmGrb_1.2.4TC.jar",
                 ),
                 "Hard" to listOf(
-//                    "pe.SandboxDT_1.91TC.jar",
-//                    "cx.mini.Cigaret_1.31TC.jar",
-//                    "kc.Fortune_1.0.jar",
-//                    "simonton.micro.WeeklongObsession_1.5TC.jar",
-//                    "jam.micro.RaikoMicro_1.44TC.jar",
+                    "pe.SandboxDT_1.91TC.jar",
+                    "cx.mini.Cigaret_1.31TC.jar",
+                    "kc.Fortune_1.0.jar",
+                    "simonton.micro.WeeklongObsession_1.5TC.jar",
+                    "jam.micro.RaikoMicro_1.44TC.jar",
                 ),
             )
         )
