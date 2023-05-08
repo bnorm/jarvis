@@ -1,4 +1,4 @@
-package bnorm
+package bnorm.battle
 
 data class Results(
     val robots: List<Robot>

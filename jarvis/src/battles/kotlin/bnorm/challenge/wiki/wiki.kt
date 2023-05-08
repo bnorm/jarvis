@@ -1,4 +1,7 @@
-package bnorm
+package bnorm.challenge.wiki
+
+import bnorm.challenge.Challenge
+import bnorm.challenge.roundDecimals
 
 fun Challenge.toWiki(title: String) = buildList {
     add(title)

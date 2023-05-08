@@ -1,5 +1,7 @@
-package bnorm
+package bnorm.challenge
 
+import bnorm.battle.Battle
+import bnorm.battle.BattleExecutor
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.channelFlow
@@ -65,30 +67,6 @@ fun BattleExecutor.challenge1v1(
             })
         }
     )
-}
-
-private suspend fun BattleExecutor.runSessions(
-    targetBot: String,
-    enemy: String,
-    sessions: Int,
-    rounds: Int
-): List<Double> {
-    val battle = Battle(rounds = rounds, robots = listOf(targetBot, enemy))
-    val scores = mutableListOf<Double>()
-
-    println("Running against $enemy")
-    repeat(sessions) { session ->
-        val result = run(battle)
-            .robots
-            .single { it.name == targetBot }
-
-        val score = result.bulletDamage / rounds
-        println("Session ${session + 1} : $enemy -> $score")
-        scores.add(score)
-    }
-
-    println("Final : $enemy -> ${scores.sum() / scores.size}")
-    return scores
 }
 
 private fun <T, R> Flow<T>.map(parallelism: Int, transform: suspend (value: T) -> R): Flow<R> {

@@ -1,4 +1,4 @@
-package bnorm
+package bnorm.battle
 
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption

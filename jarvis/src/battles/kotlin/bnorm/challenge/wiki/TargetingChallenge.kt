@@ -1,5 +1,8 @@
-package bnorm
+package bnorm.challenge.wiki
 
+import bnorm.battle.BattleExecutor
+import bnorm.challenge.challenge1v1
+import bnorm.challenge.toTable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.AfterEach

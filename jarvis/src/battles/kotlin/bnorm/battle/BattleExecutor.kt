@@ -1,4 +1,4 @@
-package bnorm
+package bnorm.battle
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible

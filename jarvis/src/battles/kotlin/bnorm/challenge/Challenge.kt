@@ -1,4 +1,4 @@
-package bnorm
+package bnorm.challenge
 
 import com.jakewharton.picnic.BorderStyle
 import com.jakewharton.picnic.RowDsl
