@@ -9,14 +9,8 @@ import org.w3c.fetch.RequestInit
 
 @Serializable
 data class BattleData(
-    val commits: List<Data>
+    val commits: List<Commit>
 ) {
-    @Serializable
-    data class Data(
-        val commit: Commit,
-        val battles: List<Battle>,
-    )
-
     companion object {
         suspend fun get(): BattleData {
             val url = js("require('./battles.json')") as String
@@ -38,16 +32,24 @@ data class BattleData(
 
 @Serializable
 data class Commit(
-    val id: String,
-    val abbreviatedId: String,
-    val authorName: String,
-    val authorEmail: String,
-    val committerName: String,
-    val committerEmail: String,
-    val dateTime: String,
-    val shortMessage: String,
-    val fullMessage: String,
-)
+    val info: Info,
+    val battles: List<Battle>,
+) {
+    val challenges: Set<String> by lazy { battles.map { it.name }.toSet() }
+
+    @Serializable
+    data class Info(
+        val id: String,
+        val abbreviatedId: String,
+        val authorName: String,
+        val authorEmail: String,
+        val committerName: String,
+        val committerEmail: String,
+        val dateTime: String,
+        val shortMessage: String,
+        val fullMessage: String,
+    )
+}
 
 @Serializable
 data class Battle(
@@ -55,15 +57,21 @@ data class Battle(
     val sessions: Int,
     val groups: List<Group>,
 ) {
+    val averageScore: Double by lazy { groups.map { group -> group.averageScore }.average() }
+
     @Serializable
     data class Group(
         val name: String,
         val results: List<Result>,
     ) {
+        val averageScore: Double by lazy { results.map { it.averageScore }.average() }
+
         @Serializable
         data class Result(
             val name: String,
             val scores: List<Double>,
-        )
+        ) {
+            val averageScore: Double by lazy { scores.average() }
+        }
     }
 }

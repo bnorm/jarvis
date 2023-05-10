@@ -44,7 +44,7 @@ compose.experimental {
 
 val generateBattleData by tasks.registering {
     outputs.file(projectDir.resolve("src/jsMain/resources/battles.json"))
-    inputs.dir(projectDir.resolve("battes"))
+    inputs.dir(projectDir.resolve("battles"))
 
     data class CommitData(
         val commit: Commit,
@@ -53,7 +53,7 @@ val generateBattleData by tasks.registering {
 
     doLast {
         val commitData =
-            projectDir.resolve("battes").walk()
+            projectDir.resolve("battles").walk()
                 .maxDepth(1).drop(1)
                 .filter { it.isDirectory }
                 .map { commit ->
@@ -68,7 +68,7 @@ val generateBattleData by tasks.registering {
             commitData.joinToString(prefix = "{\"commits\": [", separator = ",", postfix = "]}") { data ->
                 """
                     {
-                      "commit": {
+                      "info": {
                         "id": "${data.commit.id}",
                         "abbreviatedId": "${data.commit.abbreviatedId}",
                         "authorName": "${data.commit.author.name}",
